@@ -1,0 +1,31 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# MATLAB temporary and autosave files
+*.asv
+*.m~
+*~
+*.tmp
+*.temp
+*.log
+matlab_crash_dump*
+crash_dump*
+
+# Archives and transfer bundles
+*.zip
+*.7z
+*.rar
+
+# EEGLAB / pipeline generated outputs (if created inside repo)
+derivatives/
+eeglab_ERPs/
+eeglab_epochs_per_block/
+output/
+results/
+figures/
+
+# Python cache (if auxiliary scripts are added)
+__pycache__/
+*.pyc
