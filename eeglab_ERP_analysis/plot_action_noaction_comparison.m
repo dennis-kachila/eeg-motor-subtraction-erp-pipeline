@@ -24,13 +24,18 @@ fig_path = [out_path 'figures' filesep];
 if ~exist(fig_path, 'dir'), mkdir(fig_path); end
 
 %% Load the epoch files
-% No-Action Main
-na_file = [epo_path Sub '_ses-01_task-no-action_eeg_main.set'];
-if ~exist(na_file, 'file')
-    error('No-Action file not found: %s', na_file);
+% No-Action Main: prefer processed/baseline-corrected output
+na_file_bc = [out_path Sub '_ses-01_task-no-action_eeg_main_bc.set'];
+na_file_raw = [epo_path Sub '_ses-01_task-no-action_eeg_main.set'];
+if exist(na_file_bc, 'file')
+    EEG_na = pop_loadset(na_file_bc);
+    fprintf('Loaded No-Action (baseline-corrected): %d epochs\n', EEG_na.trials);
+elseif exist(na_file_raw, 'file')
+    EEG_na = pop_loadset(na_file_raw);
+    fprintf('Loaded No-Action (raw fallback): %d epochs\n', EEG_na.trials);
+else
+    error('No-Action file not found: %s or %s', na_file_bc, na_file_raw);
 end
-EEG_na = pop_loadset(na_file);
-fprintf('Loaded No-Action: %d epochs\n', EEG_na.trials);
 
 % Action Main (should be the RAW one before motor subtraction, or use motor-subtracted?)
 % Let's use the motor-subtracted one from eeglab_ERPs folder

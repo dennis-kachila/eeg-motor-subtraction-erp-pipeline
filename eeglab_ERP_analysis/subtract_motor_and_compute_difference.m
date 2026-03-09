@@ -255,19 +255,12 @@ fprintf('  Applying motor baseline to main epochs: [%.0f  %.0f] ms\n', ...
 EEG_kp_bc = pop_rmbase(EEG_kp, kp_bsl_clamped);
 
 %% =========================================================================
-%% STEP 4: ERP-level template subtraction (keypress-locked)
+%% STEP 4: Trial-level template subtraction (keypress-locked)
 %%
-%% Subtracts motor template from the AVERAGED ERP per tone type, not from
-%% individual trials. This avoids over-cancellation caused by trial-to-trial
-%% variability in motor timing/amplitude.
-%%
-%% Per-tone: average within each tone type → subtract template → replace all
-%%           trials of that tone with the cleaned ERP (preserves epoch structure
-%%           for downstream per-tone N1/P2 analysis)
-%% Collapsed: average across ALL tones → subtract template once → used for
-%%            grand average difference wave
+%% Subtract motor template from EACH trial sample-by-sample.
+%% This preserves realistic trial variability for downstream analyses.
 %% =========================================================================
-fprintf('\n--- STEP 4: ERP-level motor template subtraction ---\n');
+fprintf('\n--- STEP 4: Trial-level motor template subtraction ---\n');
 
 if size(motor_template,2) ~= size(EEG_kp_bc.data,2)
     error('Motor template has %d timepoints but main epochs have %d timepoints.', ...
@@ -276,29 +269,14 @@ end
 
 EEG_subtracted = EEG_kp_bc;
 
-% --- Per-tone subtraction ---
-for tt = 1:length(tone_types)
-    mask = get_tone_epoch_mask(EEG_kp_bc, tone_types{tt});
-    n_tone = sum(mask);
-    if n_tone == 0
-        warning('No epochs found for %s — skipping.', tone_types{tt});
-        continue;
-    end
-    % Average within this tone type then subtract template
-    tone_erp_clean = mean(EEG_kp_bc.data(:,:,mask), 3) - motor_template;  % [nChan x nTime]
-    % Replace all trials of this tone with the cleaned ERP
-    EEG_subtracted.data(:,:,mask) = repmat(tone_erp_clean, [1 1 n_tone]);
-    fprintf('  %s: averaged %d epochs → subtracted template ✓\n', tone_types{tt}, n_tone);
-end
+% Expand template to match [nChan x nTime x nTrials] then subtract once
+template_3d = repmat(motor_template, [1 1 EEG_kp_bc.trials]);
+EEG_subtracted.data = EEG_kp_bc.data - template_3d;
 
-% --- Collapsed subtraction (all tones) ---
-% Average across ALL epochs regardless of tone type, subtract template once
-collapsed_erp_clean = mean(EEG_kp_bc.data, 3) - motor_template;  % [nChan x nTime]
-% Store as a separate field for use in Step 7 grand average difference wave
-EEG_subtracted.collapsed_erp_clean = collapsed_erp_clean;
+% Keep a collapsed ERP trace for grand-average difference wave plotting
+EEG_subtracted.collapsed_erp_clean = mean(EEG_subtracted.data, 3);
 
-fprintf('  ERP-level subtraction complete (%d total epochs, %d tone types).\n', ...
-    EEG_kp_bc.trials, length(tone_types));
+fprintf('  Trial-level subtraction complete (%d total epochs).\n', EEG_kp_bc.trials);
 
 %% =========================================================================
 %% STEP 5: Convert back to TONE-LOCKED by shifting time axis

@@ -110,7 +110,12 @@ for file_idx = 1:length(all_files)
     if is_action_condition
         fprintf('✓ DETECTED: ACTION CONDITION\n');
         fprintf('  Strategy: Extract baseline (keypress-locked) + adaptation/main (tone-locked)\n');
-        fprintf('  Extended epoch window: -500 to +850ms for full P2 analysis\n\n');
+        if isfield(cfg, 'epoch_tmin') && isfield(cfg, 'epoch_tmax')
+            fprintf('  Tone-locked epoch window from cfg: %.0f to %.0f ms\n\n', ...
+                cfg.epoch_tmin * 1000, cfg.epoch_tmax * 1000);
+        else
+            fprintf('  Tone-locked epoch window will use extraction defaults\n\n');
+        end
         
         % Call ACTION extraction function
         extract_action_condition(EEG, Sub, cfg, original_chanlocs);
@@ -118,7 +123,12 @@ for file_idx = 1:length(all_files)
     else
         fprintf('✓ DETECTED: NO-ACTION CONDITION\n');
         fprintf('  Strategy: Extract adaptation/main (tone-locked, first 100 vs rest)\n');
-        fprintf('  Extended epoch window: -500 to +850ms\n\n');
+        if isfield(cfg, 'epoch_tmin') && isfield(cfg, 'epoch_tmax')
+            fprintf('  Tone-locked epoch window from cfg: %.0f to %.0f ms\n\n', ...
+                cfg.epoch_tmin * 1000, cfg.epoch_tmax * 1000);
+        else
+            fprintf('  Tone-locked epoch window will use extraction defaults\n\n');
+        end
         
         % Call NO-ACTION extraction function
         extract_noaction_condition(EEG, Sub, cfg, original_chanlocs);

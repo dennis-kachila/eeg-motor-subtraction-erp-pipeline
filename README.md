@@ -57,6 +57,9 @@ Key scientific requirement:
 ## Current Audit Status
 A full review has been completed and documented in `docs/`.
 
+Recent implemented fixes summary:
+- `docs/Implemented_Changes_Summary_2026-03-09.md`
+
 Main issues identified:
 - Some scripts mix raw and processed datasets in comparisons.
 - One script uses the wrong folder for motor-subtracted file loading.
@@ -66,19 +69,6 @@ Main issues identified:
 ## Next Implementation Step
 Create and work from a dedicated branch for fixes, for example:
 - `feature/motor-subtraction-fixes`
-
-## Suggested Git Workflow
-After creating the GitHub repo and linking remote:
-```bash
-git init
-git add .
-git commit -m "Initial import: EEG motor subtraction ERP pipeline"
-git branch -M main
-git remote add origin <your-repo-url>
-git push -u origin main
-
-git checkout -b feature/motor-subtraction-fixes
-```
 
 ## Notes
 - This project assumes EEGLAB and required toolbox/path helpers are available in your MATLAB environment.

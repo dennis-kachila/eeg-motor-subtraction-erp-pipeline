@@ -5,8 +5,8 @@ if isempty(results) || ~isfield(results, 'Central')
     return;
 end
 
-N1_lat = results.Central.N1_lat;
-P2_lat = results.Central.P2_lat;
+N1_lat = results.Central.N1_peak_lat;
+P2_lat = results.Central.P2_peak_lat;
 
 times  = EEG.times;
 N1_idx = find(times >= N1_lat, 1, 'first');
