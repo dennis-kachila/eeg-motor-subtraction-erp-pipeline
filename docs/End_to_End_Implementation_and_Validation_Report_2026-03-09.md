@@ -182,6 +182,18 @@ Trial counts seen in successful runs:
 - Tiny Action/NoAction sample-grid difference is now handled explicitly in code with harmonization to Action grid.
 - This no longer appears as an uncontrolled warning branch in subtraction logic.
 
+Observed detail from validated runs:
+- Action axis: `[-449, 641] ms` (280 samples)
+- NoAction axis: `[-449, 637] ms` (279 samples)
+
+Explanation:
+- At 256 Hz, one sample is approximately `3.906 ms` (reported as `~4 ms`).
+- This can arise from EEGLAB epoch boundary rounding/discontinuity handling after epoching and baseline operations.
+
+Mitigation implemented:
+- In `subtract_motor_and_compute_difference.m` (Step 7), NoAction trial data is explicitly interpolated to the Action time grid before per-tone and collapsed difference-wave computation.
+- This makes the subtraction/comparison deterministic and removes fragile mismatch branching.
+
 ### Non-critical EEGLAB environment warnings
 - EEGLAB path/plugin notices remain informational and did not block execution.
 
@@ -206,3 +218,104 @@ Trial counts seen in successful runs:
 2. Commit the finalized code and docs.
 3. Run the same flow for additional subjects to confirm consistency.
 4. If needed for methods reporting, explicitly note trial-level subtraction and time-grid harmonization policy.
+
+## 12. How To Understand The Results (Plain Language)
+
+This section explains what the outputs mean without requiring ERP expertise.
+
+### 12.0 What are N1 and P2 peaks?
+- `N1`:
+  - An early negative-going auditory ERP component.
+  - In this project it is searched in the `80-150 ms` window after tone onset.
+  - `N1_Peak_Amp_uV` = the most negative value found in that window.
+  - `N1_Peak_Lat_ms` = the time (ms) where that most negative value occurs.
+
+- `P2`:
+  - A later positive-going auditory ERP component.
+  - In this project it is searched in the `150-275 ms` window after tone onset.
+  - `P2_Peak_Amp_uV` = the most positive value found in that window.
+  - `P2_Peak_Lat_ms` = the time (ms) where that most positive value occurs.
+
+Why "peak" matters:
+- Peak amplitude tells you how strong that component is.
+- Peak latency tells you when that component happens.
+- Together they summarize shape and timing differences between conditions.
+
+### 12.1 What the CSV file is
+File:
+- `eeglab_ERPs/sub-01/sub-01_ERP_results.csv`
+
+Each row is one condition and one tone (`Low`, `Medium`, `High`).
+
+What these tone labels mean:
+- `Low` corresponds to event type `Tone_Low`
+- `Medium` corresponds to event type `Tone_Med`
+- `High` corresponds to event type `Tone_High`
+- They represent the three auditory tone categories in the task (low-, mid-, high-frequency tones).
+- This codebase does not store the exact numeric Hz values for these categories; those come from the acquisition paradigm settings.
+
+Key columns:
+- `Condition`: `Action_Main` or `NoAction_Main`
+- `N1_Peak_Amp_uV`: strongest negative deflection in 80-150 ms window
+- `N1_Peak_Lat_ms`: timing of that N1 peak
+- `P2_Peak_Amp_uV`: strongest positive deflection in 150-275 ms window
+- `P2_Peak_Lat_ms`: timing of that P2 peak
+- `N_Epochs`: number of trials used for that tone
+
+Important sign note:
+- Plotting is set to "negative-up" for visualization.
+- CSV values are still standard amplitudes in microvolts.
+- More negative N1 value means a larger N1 negativity.
+
+### 12.2 What this subject (`sub-01`) shows in the CSV
+
+From `Action_Main` vs `NoAction_Main` (Action minus NoAction):
+- `Low`: `DeltaN1 = +3.065 uV`, `DeltaP2 = +5.861 uV`
+- `Medium`: `DeltaN1 = +4.056 uV`, `DeltaP2 = +6.450 uV`
+- `High`: `DeltaN1 = +4.414 uV`, `DeltaP2 = +5.266 uV`
+
+Interpretation of these deltas:
+- Positive `DeltaN1` here means Action N1 is less negative than NoAction N1 (attenuated N1 magnitude).
+- Positive `DeltaP2` means Action P2 is more positive than NoAction P2 in this single subject.
+
+Scope caution:
+- This is one-subject output, not group-level statistical evidence.
+- Use as pipeline/processing validation and preliminary signal check.
+
+## 13. How To Read The Plot Files
+
+### 13.1 Core motor-subtraction diagnostics
+- `sub-01_motor_template.png`
+  - Average keypress-locked motor template from Action baseline block.
+  - Should show motor-related waveform around keypress time.
+
+- `sub-01_action_main_motor_subtracted.png`
+  - Action main after motor subtraction and baseline correction.
+  - Used to confirm corrected Action waveform shape per tone.
+
+- `sub-01_diff_wave_motor_subtracted_per_tone.png`
+- `sub-01_diff_wave_motor_subtracted_all.png`
+  - Difference waves: `Action (motor-subtracted) - NoAction`.
+  - These are the direct outputs for condition contrast.
+
+### 13.2 Condition-level ERP summaries
+- `sub-01_Action_Main_grand_average.png`
+- `sub-01_NoAction_Main_grand_average.png`
+  - Grand-average tone traces in each condition.
+  - Compare N1/P2 windows visually after harmonized preprocessing.
+
+- `sub-01_Action_vs_NoAction_Collapsed.png`
+- `sub-01_Action_vs_NoAction_PerTone.png`
+  - Side-by-side comparison plots; useful for quick communication.
+
+### 13.3 Topographies
+- `sub-01_Action_Main_topography.png`
+- `sub-01_NoAction_Main_topography.png`
+  - Spatial maps at peak latencies (P50/N1/P2).
+  - Useful to check whether scalp distributions look physiologically plausible.
+
+## 14. Practical "What To Conclude" For This Run
+- The pipeline is now running correctly end-to-end for sample `sub-01`.
+- Motor subtraction, matched baseline handling, and difference-wave generation are all functioning.
+- The CSV and plots are internally consistent with the updated code path.
+- Final scientific claims should be deferred until multi-subject/group analysis is run.

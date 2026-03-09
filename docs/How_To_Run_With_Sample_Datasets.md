@@ -81,6 +81,19 @@ And figures in `eeglab_ERPs/sub-01/figures/`, including:
 - difference wave (per-tone and all-tone)
 - Action vs NoAction comparison figures
 
+## 6) What `Low`, `Medium`, and `High` Mean
+You will see these labels in plot legends and in `sub-01_ERP_results.csv` under `Tone`.
+
+- `Low` = epochs with event marker `Tone_Low`
+- `Medium` = epochs with event marker `Tone_Med`
+- `High` = epochs with event marker `Tone_High`
+
+In plain language, these are the three auditory stimulus categories (low-, mid-, and high-frequency tones) defined by the experiment.
+
+Important note:
+- This repository uses category labels, not explicit numeric frequencies.
+- Exact Hz values come from the acquisition/paradigm configuration used during data collection, not from these analysis scripts.
+
 ## Optional: Run from terminal (PowerShell)
 From repo root:
 
@@ -102,3 +115,20 @@ In this repo snapshot, Step 7 with prepared epoched inputs is the recommended va
   Add `external/eeglab` to MATLAB path.
 - Missing helper function errors:
   Ensure repository root is on MATLAB path (`addpath(genpath(pwd))`).
+
+## Timing Note (Observed 4 ms Difference)
+During validation, a small Action vs NoAction endpoint mismatch was observed in some runs:
+- Action time axis: `[-449, 641] ms`
+- NoAction time axis: `[-449, 637] ms`
+
+Why this happens:
+- EEGLAB epoch boundary rounding and discontinuity handling can produce a 1-sample endpoint difference after epoching/baseline operations.
+- At `256 Hz`, one sample is `~3.906 ms`, which appears as approximately `4 ms` in logs.
+
+How it is handled in code:
+- `subtract_motor_and_compute_difference.m` now explicitly harmonizes NoAction to the Action time grid before difference-wave computation.
+- This removes fragile branch behavior and keeps subtraction/comparison deterministic.
+
+Interpretation:
+- This is a sample-grid alignment detail, not a conceptual subtraction error.
+- The pipeline now handles it intentionally and continues to produce valid output artifacts.
