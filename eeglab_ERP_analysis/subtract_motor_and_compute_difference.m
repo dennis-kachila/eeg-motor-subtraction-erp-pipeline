@@ -342,21 +342,21 @@ plot_subtracted_action(EEG_tone_bc, Sub, plot_chans, tone_types, tone_labels, to
 fprintf('\n--- STEP 7: Computing difference wave ---\n');
 
 % Both datasets are now tone-locked and baseline corrected with [-200, 0ms]
-% Verify time axes match
-if abs(EEG_tone_bc.times(1) - EEG_main_na_bc.times(1)) > 2 || ...
-   abs(EEG_tone_bc.times(end) - EEG_main_na_bc.times(end)) > 2
-    warning(['Action and no-action epoch windows do not match exactly:\n' ...
-        '  Action:    [%.0f  %.0f] ms\n' ...
-        '  No-action: [%.0f  %.0f] ms\n' ...
-        'Interpolating no-action to match action time axis.'], ...
-        EEG_tone_bc.times(1), EEG_tone_bc.times(end), ...
-        EEG_main_na_bc.times(1), EEG_main_na_bc.times(end));
-    na_erp_all    = mean(EEG_main_na_bc.data, 3);
-    na_erp_interp = interp1(EEG_main_na_bc.times, na_erp_all', EEG_tone_bc.times, 'linear')';
-    times = EEG_tone_bc.times;
+% Harmonize both conditions onto Action time vector for deterministic subtraction
+times = EEG_tone_bc.times;
+if length(EEG_main_na_bc.times) ~= length(times) || any(abs(EEG_main_na_bc.times - times) > 1e-6)
+    fprintf(['  INFO: Harmonizing NoAction time axis to Action grid\n' ...
+             '        Action:    [%.0f  %.0f] ms (%d samples)\n' ...
+             '        NoAction:  [%.0f  %.0f] ms (%d samples)\n'], ...
+            EEG_tone_bc.times(1), EEG_tone_bc.times(end), length(EEG_tone_bc.times), ...
+            EEG_main_na_bc.times(1), EEG_main_na_bc.times(end), length(EEG_main_na_bc.times));
+
+    % Interpolate NoAction trial data to Action time axis (time x chan*trial)
+    na_data_2d = reshape(permute(EEG_main_na_bc.data, [2 1 3]), length(EEG_main_na_bc.times), []);
+    na_interp_2d = interp1(EEG_main_na_bc.times, na_data_2d, times, 'linear', 'extrap');
+    na_data_aligned = permute(reshape(na_interp_2d, [length(times), EEG_main_na_bc.nbchan, EEG_main_na_bc.trials]), [2 1 3]);
 else
-    na_erp_interp = [];
-    times = EEG_tone_bc.times;
+    na_data_aligned = EEG_main_na_bc.data;
 end
 
 if isstruct(EEG_tone_bc.chanlocs)
@@ -395,15 +395,11 @@ for tt = 1:length(tone_types)
 
     % NoAction ERP for this tone
     na_ep = get_tone_epoch_mask(EEG_main_na_bc, tone_typ);
-    if isempty(na_erp_interp)
-        if any(na_ep)
-            na_erp_roi = squeeze(mean(mean(EEG_main_na_bc.data(roi_idx, :, na_ep), 1), 3));
-        else
-            na_erp_roi = zeros(1, length(times));
-            warning('No %s epochs in no-action data.', tone_typ);
-        end
+    if any(na_ep)
+        na_erp_roi = squeeze(mean(mean(na_data_aligned(roi_idx, :, na_ep), 1), 3));
     else
-        na_erp_roi = squeeze(mean(na_erp_interp(roi_idx, :), 1));
+        na_erp_roi = zeros(1, length(times));
+        warning('No %s epochs in no-action data.', tone_typ);
     end
 
     diff_waves.(tone_lbl)                = ac_erp_roi - na_erp_roi;
@@ -422,11 +418,7 @@ else
     ac_all = squeeze(mean(mean(EEG_tone_bc.data(roi_idx, :, :), 3), 1));
     fprintf('  WARNING: collapsed_erp_clean not found, falling back to epoch average\n');
 end
-if isempty(na_erp_interp)
-    na_all = squeeze(mean(mean(EEG_main_na_bc.data(roi_idx, :, :), 3), 1));
-else
-    na_all = squeeze(mean(na_erp_interp(roi_idx, :), 1));
-end
+na_all = squeeze(mean(mean(na_data_aligned(roi_idx, :, :), 3), 1));
 diff_waves.All             = ac_all - na_all;
 diff_waves.All_n_action    = EEG_tone_bc.trials;
 diff_waves.All_n_noaction  = EEG_main_na_bc.trials;

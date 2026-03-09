@@ -1,0 +1,104 @@
+# How To Run In MATLAB Environment
+
+Date: 2026-03-09
+
+## Summary
+This guide shows how to run the project in MATLAB using the provided sample data and current codebase.
+
+Validated path:
+1. Add repo + EEGLAB to MATLAB path.
+2. Place required epoched `.set/.fdt` pairs in `eeglab_epochs_per_block/sub-01/`.
+3. Run `PrepareData_7_ComputeERPs('sub-01', cfg)`.
+4. Verify output files under `eeglab_ERPs/sub-01/`.
+
+## Prerequisites
+1. MATLAB is installed and callable.
+2. EEGLAB is available (repo currently uses `external/eeglab`).
+3. Required helper files exist in repo root:
+- `GetFilePathsAndInitializeToolboxes.m`
+- `SaveMyData.m`
+
+## 1) Start MATLAB in repository root
+Open MATLAB with current folder set to this repository root:
+- `C:\Users\USER\Downloads\Documents\eeg-motor-subtraction-erp-pipeline`
+
+## 2) Add paths in MATLAB
+Run:
+
+```matlab
+addpath(genpath(pwd));
+addpath(genpath(fullfile(pwd, 'external', 'eeglab')));
+```
+
+Optional quick check:
+
+```matlab
+which eeglab
+which pop_loadset
+which topoplot
+```
+
+## 3) Prepare Step 7 inputs (`.set` + `.fdt`)
+`PrepareData_7_ComputeERPs` loads epoched inputs from:
+- `eeglab_epochs_per_block/sub-01/`
+
+Required files (both `.set` and `.fdt` companions):
+- `sub-01_ses-01_task-no-action_eeg_adaptation.*`
+- `sub-01_ses-01_task-no-action_eeg_main.*`
+- `sub-01_ses-02_task-action_eeg_adaptation_action.*`
+- `sub-01_ses-02_task-action_eeg_main_action.*`
+- `sub-01_ses-02_task-action_eeg_baseline_action.*`
+
+If needed, copy from `sample_datasets/epoched datasets/` into `eeglab_epochs_per_block/sub-01/`.
+
+Note:
+- Keep `.set` and `.fdt` base names matched exactly.
+- Do not rename only `.set` without `.fdt`.
+
+## 4) Run Step 7 (ERP + motor subtraction)
+In MATLAB:
+
+```matlab
+cfg = struct();
+cfg.Pipeline = 1;
+PrepareData_7_ComputeERPs('sub-01', cfg);
+```
+
+## 5) Verify outputs
+Check these outputs in `eeglab_ERPs/sub-01/`:
+
+- `sub-01_ses-02_task-action_eeg_main_action_motor_subtracted.set`
+- `sub-01_ses-01_task-no-action_eeg_main_bc.set`
+- `sub-01_difference_wave_motor_subtracted.mat`
+- `sub-01_ERP_results_action.mat`
+- `sub-01_ERP_results_noaction.mat`
+- `sub-01_ERP_results.csv`
+- `sub-01_ERP_results.xlsx`
+
+And figures in `eeglab_ERPs/sub-01/figures/`, including:
+- motor template
+- action motor-subtracted ERP
+- difference wave (per-tone and all-tone)
+- Action vs NoAction comparison figures
+
+## Optional: Run from terminal (PowerShell)
+From repo root:
+
+```powershell
+matlab -batch "addpath(genpath(pwd)); addpath(genpath(fullfile(pwd,'external','eeglab'))); cfg=struct(); cfg.Pipeline=1; PrepareData_7_ComputeERPs('sub-01', cfg);"
+```
+
+## Optional: Full extraction + ERP flow
+If your environment includes the full project helper stack and path config for continuous input:
+1. Run extraction (Step 6) from continuous files.
+2. Run ERP computation (Step 7).
+
+In this repo snapshot, Step 7 with prepared epoched inputs is the recommended validated path.
+
+## Troubleshooting
+- `... .fdt not found`:
+  Ensure `.fdt` companion exists next to `.set` with same base name.
+- `eeglab not found`:
+  Add `external/eeglab` to MATLAB path.
+- Missing helper function errors:
+  Ensure repository root is on MATLAB path (`addpath(genpath(pwd))`).

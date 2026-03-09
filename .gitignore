@@ -18,6 +18,10 @@ crash_dump*
 *.7z
 *.rar
 
+# EEGLAB dataset files
+*.set
+*.fdt
+
 # EEGLAB / pipeline generated outputs (if created inside repo)
 derivatives/
 eeglab_ERPs/
