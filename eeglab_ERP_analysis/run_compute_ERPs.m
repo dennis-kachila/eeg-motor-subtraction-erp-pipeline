@@ -38,4 +38,4 @@ for s = 1:length(subjects)
 end
 
 fprintf('\n=== ERP COMPUTATION COMPLETE ===\n');
-fprintf('Results saved to derivatives/eeglab_ERPs/sub-XX/\n');
+fprintf('Results saved to eeglab_ERPs/sub-XX/\n');

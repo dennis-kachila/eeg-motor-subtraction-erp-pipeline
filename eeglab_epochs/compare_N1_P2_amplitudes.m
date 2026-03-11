@@ -11,7 +11,7 @@ function compare_N1_P2_amplitudes(Sub, cfg)
 % OUTPUTS:
 %   - CSV file with peak and mean amplitudes for each condition/block
 %   - Bar plots comparing amplitudes across blocks
-%   - Statistical summary (paired t-tests)
+%   - Descriptive within-subject summary statistics
 %
 % USAGE:
 %   Sub = 'sub-01';
@@ -43,11 +43,17 @@ fprintf('--- Loading datasets ---\n');
 
 % NoAction
 na_adapt = load_set(epo_path, [Sub '_ses-01_task-no-action_eeg_adaptation.set']);
-na_main  = load_set(epo_path, [Sub '_ses-01_task-no-action_eeg_main.set']);
+na_main  = load_set(out_path, [Sub '_ses-01_task-no-action_eeg_main_bc.set']);
+if isempty(na_main)
+    na_main = load_set(epo_path, [Sub '_ses-01_task-no-action_eeg_main.set']);
+end
 
 % Action (motor-subtracted Main, regular Adaptation)
 ac_adapt = load_set(epo_path, [Sub '_ses-02_task-action_eeg_adaptation_action.set']);
-ac_main  = load_set(epo_path, [Sub '_ses-02_task-action_eeg_main_action_motor_subtracted.set']);
+ac_main  = load_set(out_path, [Sub '_ses-02_task-action_eeg_main_action_motor_subtracted.set']);
+if isempty(ac_main)
+    ac_main = load_set(epo_path, [Sub '_ses-02_task-action_eeg_main_action.set']);
+end
 
 %% Extract amplitudes for each condition/block
 fprintf('\n--- Extracting amplitudes ---\n');

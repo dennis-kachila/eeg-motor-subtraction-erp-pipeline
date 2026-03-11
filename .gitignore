@@ -1,0 +1,73 @@
+# ============================================================
+# OS / editor
+# ============================================================
+.DS_Store
+Thumbs.db
+.vscode/
+*.code-workspace
+
+# ============================================================
+# MATLAB temporary and autosave files
+# ============================================================
+*.asv
+*.m~
+*~
+~$*
+*.tmp
+*.temp
+*.log
+matlab_crash_dump*
+crash_dump*
+
+# ============================================================
+# Archives and transfer bundles
+# ============================================================
+*.zip
+*.7z
+*.rar
+!sample_datasets_full_2026-03-09_1727.zip
+
+# ============================================================
+# Binary document formats
+# ============================================================
+# Tracked: *.docx, *.doc, *.xlsx, *.xls are included in the repo.
+
+# ============================================================
+# EEGLAB dataset files (large binary, managed outside git)
+# ============================================================
+*.set
+*.fdt
+
+# ============================================================
+# Pipeline-generated output folders
+# ============================================================
+# eeglab_ERPs/ is tracked so results (CSV, MAT, PNG) are versioned.
+# Large epoch dataset files (.set, .fdt) inside it are excluded by the
+# global *.set / *.fdt rules above.
+eeglab_epochs_per_block/
+eeglab_ERPs_legacy/
+eeglab_ERPs_fixed_backup_*/
+derivatives/
+output/
+results/
+
+# ============================================================
+# External toolboxes (install separately; see README)
+# ============================================================
+external/
+
+# ============================================================
+# Sample / raw data folders (manage outside git)
+# ============================================================
+sample_datasets/
+
+# ============================================================
+# Development / comparison artefacts (not for main branch)
+# ============================================================
+legacy_code_snapshot/
+
+# ============================================================
+# Python cache (if auxiliary scripts are added)
+# ============================================================
+__pycache__/
+*.pyc

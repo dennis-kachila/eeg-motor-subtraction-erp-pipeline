@@ -22,23 +22,6 @@ fprintf('\n--- No-Action Condition ---\n');
 na_adapt = load_set(epo_path, [Sub '_ses-01_task-no-action_eeg_adaptation.set']);
 na_main  = load_set(epo_path, [Sub '_ses-01_task-no-action_eeg_main.set']);
 
-if ~isempty(na_adapt) || ~isempty(na_main)
-    results_noaction = compute_N1_P2(na_adapt, na_main, 'NoAction');
-    save([out_path Sub '_ERP_results_noaction.mat'], 'results_noaction');
-    if ~isempty(na_adapt)
-        peaks = get_grand_peaks(na_adapt);
-        plot_erp( na_adapt, peaks, Sub, 'NoAction', 'Adaptation', fig_path);
-        plot_topo(na_adapt, peaks, Sub, 'NoAction_Adaptation', fig_path);
-    end
-    if ~isempty(na_main)
-        peaks = get_grand_peaks(na_main);
-        plot_erp( na_main, peaks, Sub, 'NoAction', 'Main', fig_path);
-        plot_topo(na_main, peaks, Sub, 'NoAction_Main', fig_path);
-    end
-else
-    fprintf('  No no-action epoch files found\n');
-end
-
 %% ACTION CONDITION
 fprintf('\n--- Action Condition ---\n');
 ac_adapt    = load_set(epo_path, [Sub '_ses-02_task-action_eeg_adaptation_action.set']);
@@ -66,6 +49,13 @@ if ~isempty(ac_main) && ~isempty(ac_baseline)
     end
 end
 
+% Prefer processed main files so Action and NoAction use matched final state.
+na_main_bc_file = [out_path Sub '_ses-01_task-no-action_eeg_main_bc.set'];
+if exist(na_main_bc_file, 'file')
+    na_main = pop_loadset(na_main_bc_file);
+    fprintf('  Loaded baseline-corrected no-action main: %d epochs\n', na_main.trials);
+end
+
 if ~isempty(ac_adapt) || ~isempty(ac_main)
     results_action = compute_N1_P2(ac_adapt, ac_main, 'Action');
     save([out_path Sub '_ERP_results_action.mat'], 'results_action');
@@ -85,6 +75,23 @@ if ~isempty(ac_adapt) || ~isempty(ac_main)
     end
 else
     fprintf('  No action epoch files found\n');
+end
+
+if ~isempty(na_adapt) || ~isempty(na_main)
+    results_noaction = compute_N1_P2(na_adapt, na_main, 'NoAction');
+    save([out_path Sub '_ERP_results_noaction.mat'], 'results_noaction');
+    if ~isempty(na_adapt)
+        peaks = get_grand_peaks(na_adapt);
+        plot_erp( na_adapt, peaks, Sub, 'NoAction', 'Adaptation', fig_path);
+        plot_topo(na_adapt, peaks, Sub, 'NoAction_Adaptation', fig_path);
+    end
+    if ~isempty(na_main)
+        peaks = get_grand_peaks(na_main);
+        plot_erp( na_main, peaks, Sub, 'NoAction', 'Main', fig_path);
+        plot_topo(na_main, peaks, Sub, 'NoAction_Main', fig_path);
+    end
+else
+    fprintf('  No no-action epoch files found\n');
 end
 
 %% COMPARISON PLOTS (Action vs No-Action)

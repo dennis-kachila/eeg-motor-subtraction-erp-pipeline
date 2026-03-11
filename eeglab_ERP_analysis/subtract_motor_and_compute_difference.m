@@ -255,19 +255,12 @@ fprintf('  Applying motor baseline to main epochs: [%.0f  %.0f] ms\n', ...
 EEG_kp_bc = pop_rmbase(EEG_kp, kp_bsl_clamped);
 
 %% =========================================================================
-%% STEP 4: ERP-level template subtraction (keypress-locked)
+%% STEP 4: Trial-level template subtraction (keypress-locked)
 %%
-%% Subtracts motor template from the AVERAGED ERP per tone type, not from
-%% individual trials. This avoids over-cancellation caused by trial-to-trial
-%% variability in motor timing/amplitude.
-%%
-%% Per-tone: average within each tone type → subtract template → replace all
-%%           trials of that tone with the cleaned ERP (preserves epoch structure
-%%           for downstream per-tone N1/P2 analysis)
-%% Collapsed: average across ALL tones → subtract template once → used for
-%%            grand average difference wave
+%% Subtract motor template from EACH trial sample-by-sample.
+%% This preserves realistic trial variability for downstream analyses.
 %% =========================================================================
-fprintf('\n--- STEP 4: ERP-level motor template subtraction ---\n');
+fprintf('\n--- STEP 4: Trial-level motor template subtraction ---\n');
 
 if size(motor_template,2) ~= size(EEG_kp_bc.data,2)
     error('Motor template has %d timepoints but main epochs have %d timepoints.', ...
@@ -276,29 +269,14 @@ end
 
 EEG_subtracted = EEG_kp_bc;
 
-% --- Per-tone subtraction ---
-for tt = 1:length(tone_types)
-    mask = get_tone_epoch_mask(EEG_kp_bc, tone_types{tt});
-    n_tone = sum(mask);
-    if n_tone == 0
-        warning('No epochs found for %s — skipping.', tone_types{tt});
-        continue;
-    end
-    % Average within this tone type then subtract template
-    tone_erp_clean = mean(EEG_kp_bc.data(:,:,mask), 3) - motor_template;  % [nChan x nTime]
-    % Replace all trials of this tone with the cleaned ERP
-    EEG_subtracted.data(:,:,mask) = repmat(tone_erp_clean, [1 1 n_tone]);
-    fprintf('  %s: averaged %d epochs → subtracted template ✓\n', tone_types{tt}, n_tone);
-end
+% Expand template to match [nChan x nTime x nTrials] then subtract once
+template_3d = repmat(motor_template, [1 1 EEG_kp_bc.trials]);
+EEG_subtracted.data = EEG_kp_bc.data - template_3d;
 
-% --- Collapsed subtraction (all tones) ---
-% Average across ALL epochs regardless of tone type, subtract template once
-collapsed_erp_clean = mean(EEG_kp_bc.data, 3) - motor_template;  % [nChan x nTime]
-% Store as a separate field for use in Step 7 grand average difference wave
-EEG_subtracted.collapsed_erp_clean = collapsed_erp_clean;
+% Keep a collapsed ERP trace for grand-average difference wave plotting
+EEG_subtracted.collapsed_erp_clean = mean(EEG_subtracted.data, 3);
 
-fprintf('  ERP-level subtraction complete (%d total epochs, %d tone types).\n', ...
-    EEG_kp_bc.trials, length(tone_types));
+fprintf('  Trial-level subtraction complete (%d total epochs).\n', EEG_kp_bc.trials);
 
 %% =========================================================================
 %% STEP 5: Convert back to TONE-LOCKED by shifting time axis
@@ -364,21 +342,21 @@ plot_subtracted_action(EEG_tone_bc, Sub, plot_chans, tone_types, tone_labels, to
 fprintf('\n--- STEP 7: Computing difference wave ---\n');
 
 % Both datasets are now tone-locked and baseline corrected with [-200, 0ms]
-% Verify time axes match
-if abs(EEG_tone_bc.times(1) - EEG_main_na_bc.times(1)) > 2 || ...
-   abs(EEG_tone_bc.times(end) - EEG_main_na_bc.times(end)) > 2
-    warning(['Action and no-action epoch windows do not match exactly:\n' ...
-        '  Action:    [%.0f  %.0f] ms\n' ...
-        '  No-action: [%.0f  %.0f] ms\n' ...
-        'Interpolating no-action to match action time axis.'], ...
-        EEG_tone_bc.times(1), EEG_tone_bc.times(end), ...
-        EEG_main_na_bc.times(1), EEG_main_na_bc.times(end));
-    na_erp_all    = mean(EEG_main_na_bc.data, 3);
-    na_erp_interp = interp1(EEG_main_na_bc.times, na_erp_all', EEG_tone_bc.times, 'linear')';
-    times = EEG_tone_bc.times;
+% Harmonize both conditions onto Action time vector for deterministic subtraction
+times = EEG_tone_bc.times;
+if length(EEG_main_na_bc.times) ~= length(times) || any(abs(EEG_main_na_bc.times - times) > 1e-6)
+    fprintf(['  INFO: Harmonizing NoAction time axis to Action grid\n' ...
+             '        Action:    [%.0f  %.0f] ms (%d samples)\n' ...
+             '        NoAction:  [%.0f  %.0f] ms (%d samples)\n'], ...
+            EEG_tone_bc.times(1), EEG_tone_bc.times(end), length(EEG_tone_bc.times), ...
+            EEG_main_na_bc.times(1), EEG_main_na_bc.times(end), length(EEG_main_na_bc.times));
+
+    % Interpolate NoAction trial data to Action time axis (time x chan*trial)
+    na_data_2d = reshape(permute(EEG_main_na_bc.data, [2 1 3]), length(EEG_main_na_bc.times), []);
+    na_interp_2d = interp1(EEG_main_na_bc.times, na_data_2d, times, 'linear', 'extrap');
+    na_data_aligned = permute(reshape(na_interp_2d, [length(times), EEG_main_na_bc.nbchan, EEG_main_na_bc.trials]), [2 1 3]);
 else
-    na_erp_interp = [];
-    times = EEG_tone_bc.times;
+    na_data_aligned = EEG_main_na_bc.data;
 end
 
 if isstruct(EEG_tone_bc.chanlocs)
@@ -417,15 +395,11 @@ for tt = 1:length(tone_types)
 
     % NoAction ERP for this tone
     na_ep = get_tone_epoch_mask(EEG_main_na_bc, tone_typ);
-    if isempty(na_erp_interp)
-        if any(na_ep)
-            na_erp_roi = squeeze(mean(mean(EEG_main_na_bc.data(roi_idx, :, na_ep), 1), 3));
-        else
-            na_erp_roi = zeros(1, length(times));
-            warning('No %s epochs in no-action data.', tone_typ);
-        end
+    if any(na_ep)
+        na_erp_roi = squeeze(mean(mean(na_data_aligned(roi_idx, :, na_ep), 1), 3));
     else
-        na_erp_roi = squeeze(mean(na_erp_interp(roi_idx, :), 1));
+        na_erp_roi = zeros(1, length(times));
+        warning('No %s epochs in no-action data.', tone_typ);
     end
 
     diff_waves.(tone_lbl)                = ac_erp_roi - na_erp_roi;
@@ -444,11 +418,7 @@ else
     ac_all = squeeze(mean(mean(EEG_tone_bc.data(roi_idx, :, :), 3), 1));
     fprintf('  WARNING: collapsed_erp_clean not found, falling back to epoch average\n');
 end
-if isempty(na_erp_interp)
-    na_all = squeeze(mean(mean(EEG_main_na_bc.data(roi_idx, :, :), 3), 1));
-else
-    na_all = squeeze(mean(na_erp_interp(roi_idx, :), 1));
-end
+na_all = squeeze(mean(mean(na_data_aligned(roi_idx, :, :), 3), 1));
 diff_waves.All             = ac_all - na_all;
 diff_waves.All_n_action    = EEG_tone_bc.trials;
 diff_waves.All_n_noaction  = EEG_main_na_bc.trials;
