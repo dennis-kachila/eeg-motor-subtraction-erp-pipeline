@@ -25,6 +25,7 @@ crash_dump*
 *.zip
 *.7z
 *.rar
+!sample_datasets_full_2026-03-09_1727.zip
 
 # ============================================================
 # Binary document formats
