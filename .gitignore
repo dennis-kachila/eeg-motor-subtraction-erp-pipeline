@@ -26,12 +26,9 @@ crash_dump*
 *.rar
 
 # ============================================================
-# Binary document formats (use Markdown in docs/ instead)
+# Binary document formats
 # ============================================================
-*.docx
-*.doc
-*.xlsx
-*.xls
+# Tracked: *.docx, *.doc, *.xlsx, *.xls are included in the repo.
 
 # ============================================================
 # EEGLAB dataset files (large binary, managed outside git)
