@@ -12,6 +12,7 @@ Thumbs.db
 *.asv
 *.m~
 *~
+~$*
 *.tmp
 *.temp
 *.log
