@@ -12,9 +12,6 @@ end
 
 fprintf('\n=== Plotting Action vs No-Action Comparison for %s ===\n', Sub);
 
-% Initialize EEGLAB
-eeglab nogui;
-
 % Paths
 cfgPath  = GetFilePathsAndInitializeToolboxes;
 epo_path = [cfgPath.PATH.PreprocPath 'eeglab_epochs_per_block' filesep Sub filesep];

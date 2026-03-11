@@ -44,7 +44,8 @@ function subtract_motor_and_compute_difference(Sub, cfg)
 % =========================================================================
 % INPUTS
 %   Sub  : subject ID string, e.g. 'sub-01'
-%   cfg  : configuration struct (from GetConfig). Must include path fields.
+%   cfg  : configuration struct (reserved for future use; currently unused —
+%          paths are resolved automatically via GetFilePathsAndInitializeToolboxes)
 %
 % OUTPUTS (all saved to eeglab_ERPs/Sub/)
 %   Sub_ses-02_task-action_eeg_main_action_motor_subtracted.set

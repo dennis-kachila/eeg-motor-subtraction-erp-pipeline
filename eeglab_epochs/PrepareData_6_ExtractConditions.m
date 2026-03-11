@@ -9,9 +9,20 @@ function PrepareData_6_ExtractConditions(Sub, cfg)
 eeglab nogui;
 
 % --------------------------------------------------------------
-% Get configuration (loads paths from pipeline)
+% Build configuration from repository paths
 % --------------------------------------------------------------
-[cfg] = GetConfig(Sub, 'ExtractConditions', cfg);
+cfgPath = GetFilePathsAndInitializeToolboxes;
+repoRoot = cfgPath.PATH.PreprocPath;
+
+% Input: post-ICA continuous datasets
+if ~isfield(cfg, 'PathInEEG') || isempty(cfg.PathInEEG)
+    cfg.PathInEEG = fullfile(repoRoot, 'sample_datasets', 'continuous datasets', filesep);
+end
+
+% Output: per-block epoched sets (consumed by PrepareData_7_ComputeERPs)
+if ~isfield(cfg, 'OUTPath') || isempty(cfg.OUTPath)
+    cfg.OUTPath = fullfile(repoRoot, 'eeglab_epochs_per_block', Sub, filesep);
+end
 
 % create output directory
 if ~isfolder(cfg.OUTPath)
