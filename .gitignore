@@ -40,16 +40,17 @@ crash_dump*
 *.fdt
 
 # ============================================================
-# Pipeline-generated output folders (never commit outputs)
+# Pipeline-generated output folders
 # ============================================================
-eeglab_ERPs/
+# eeglab_ERPs/ is tracked so results (CSV, MAT, PNG) are versioned.
+# Large epoch dataset files (.set, .fdt) inside it are excluded by the
+# global *.set / *.fdt rules above.
 eeglab_epochs_per_block/
 eeglab_ERPs_legacy/
 eeglab_ERPs_fixed_backup_*/
 derivatives/
 output/
 results/
-figures/
 
 # ============================================================
 # External toolboxes (install separately; see README)
