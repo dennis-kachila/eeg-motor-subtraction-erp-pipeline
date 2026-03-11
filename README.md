@@ -133,3 +133,4 @@ See `docs/Legacy_vs_Fixed_Results_Comparison_Sub-01_2026-03-11.md` for the full 
 - Sample datasets for `sub-01` should be placed in `eeglab_epochs_per_block/sub-01/`.
 - All docs in `docs/` are Markdown; binary formats (`.docx`, `.xlsx`) are gitignored.
 
+Done by Dennis Kachila, 2026-03-09
