@@ -86,10 +86,21 @@ for f = 1:length(all_files)
     ica_chans = cfg.ica_chans;
     if isempty(ica_chans)
         % get indices of EEG channels only
-        eeg_chans = find(strcmp({EEG.chanlocs.type}, 'EEG'));
+        eeg_chans = [];
+        if isfield(EEG.chanlocs, 'type')
+            eeg_chans = find(strcmpi({EEG.chanlocs.type}, 'EEG'));
+        end
         if isempty(eeg_chans)
-            % if type is not set, use all channels
+            % If channel typing is missing, exclude obvious non-scalp channels
+            % so ICA is not driven by EOG, mastoid, or status channels.
+            eeg_chans = get_scalp_channel_indices(EEG);
+        end
+
+        if isempty(eeg_chans)
+            % Final fallback if no deterministic scalp subset can be inferred.
             ica_chans = 1:EEG.nbchan;
+            warning('PrepareData_3:AllChannelsFallback', ...
+                'Channel typing unavailable and no scalp-only fallback could be inferred. Using all %d channels for ICA.', EEG.nbchan);
         else
             ica_chans = eeg_chans;
         end
@@ -188,3 +199,33 @@ end
 fprintf('========================================\n');
 fprintf('Completed ICA for %s\n', Sub);
 fprintf('========================================\n\n');
+
+function scalp_idx = get_scalp_channel_indices(EEG)
+    scalp_idx = [];
+    if ~isfield(EEG, 'chanlocs') || isempty(EEG.chanlocs)
+        return;
+    end
+
+    chan_labels = lower(strtrim({EEG.chanlocs.labels}));
+    exclude_patterns = {'eog', 'vertical', 'horizontal', 'mastoid', 'status'};
+    exclude_exact = {'heog', 'veog', 'm1', 'm2', 'a1', 'a2'};
+
+    keep_mask = true(1, numel(chan_labels));
+    for idx = 1:numel(chan_labels)
+        label = chan_labels{idx};
+        if any(strcmp(label, exclude_exact))
+            keep_mask(idx) = false;
+            continue;
+        end
+        for pattern_idx = 1:numel(exclude_patterns)
+            if contains(label, exclude_patterns{pattern_idx})
+                keep_mask(idx) = false;
+                break;
+            end
+        end
+    end
+
+    scalp_idx = find(keep_mask);
+end
+
+end

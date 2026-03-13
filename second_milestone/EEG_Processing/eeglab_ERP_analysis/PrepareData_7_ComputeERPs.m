@@ -326,7 +326,7 @@ function plot_topo(EEG, peaks, Sub, label, fig_path)
     clim_N1  = make_clim(N1_topo);
     clim_P2  = make_clim(P2_topo);
 
-    topo_args = {'electrodes', 'on', 'style', 'map', 'shading', 'interp', ...
+    topo_args = {'electrodes', 'on', 'style', 'map', 'shading', 'flat', ...
                  'plotrad', 0.5, 'headrad', 0.5, 'intrad', 0.5};
 
     fig = figure('Position', [100 100 1500 480], 'Visible', 'off');

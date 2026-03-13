@@ -49,9 +49,13 @@ fprintf('========================================\n\n');
 % load the EEG file
 % --------------------------------------------------------------
 fprintf('Loading ICA results: %s...\n', input_file);
-[EEG, com] = pop_loadset(input_file, input_path);
+[EEG, com] = pop_loadset('filename', input_file, 'filepath', input_path, 'check', 'off');
 EEG = eegh(com, EEG);
 EEG.data = double(EEG.data);
+
+% Some legacy ICA files carry inconsistent icachansind length metadata.
+% Normalize this before any eeg_checkset/ICLabel call to avoid GUI prompts.
+EEG = normalize_icachansind_metadata(EEG);
     
 [EEG, com] = eeg_checkset( EEG );
 EEG = eegh(com, EEG);
@@ -72,21 +76,7 @@ if cfg.use_iclabel
     catch ME_iclabel
         fprintf('ICLabel failed on native montage (%s). Trying channel-consistent fallback...\n', ME_iclabel.message);
 
-        EEG_fallback = EEG;
-        if isfield(EEG, 'icachansind') && ~isempty(EEG.icachansind)
-            ic_idx = EEG.icachansind(:)';
-            valid_idx = ic_idx(ic_idx >= 1 & ic_idx <= size(EEG.data, 1));
-            if numel(valid_idx) == size(EEG.icaweights, 2)
-                EEG_fallback.data = EEG.data(valid_idx, :, :);
-                EEG_fallback.nbchan = numel(valid_idx);
-                if numel(EEG.chanlocs) >= max(valid_idx)
-                    EEG_fallback.chanlocs = EEG.chanlocs(valid_idx);
-                else
-                    EEG_fallback.chanlocs = EEG.chanlocs(1:EEG_fallback.nbchan);
-                end
-                EEG_fallback.icachansind = 1:EEG_fallback.nbchan;
-            end
-        end
+        EEG_fallback = build_iclabel_fallback_dataset(EEG);
 
         try
             EEG_fallback = pop_iclabel(EEG_fallback, 'default');
@@ -204,3 +194,157 @@ fprintf('Done with %s\n\n', input_file);
 fprintf('========================================\n');
 fprintf('Completed IC rejection for %s\n', Sub);
 fprintf('========================================\n\n');
+
+function EEG_fallback = build_iclabel_fallback_dataset(EEG)
+EEG_fallback = EEG;
+
+scalp_idx = get_scalp_channel_indices(EEG);
+if isempty(scalp_idx)
+    return;
+end
+
+% Keep only channels that are both scalp-like and part of the ICA model.
+if isfield(EEG, 'icachansind') && ~isempty(EEG.icachansind)
+    ica_chan_idx = EEG.icachansind(:)';
+else
+    ica_chan_idx = 1:EEG.nbchan;
+end
+
+selected_orig_idx = ica_chan_idx(ismember(ica_chan_idx, scalp_idx));
+if isempty(selected_orig_idx)
+    return;
+end
+
+EEG_fallback.data = EEG.data(selected_orig_idx, :, :);
+EEG_fallback.nbchan = numel(selected_orig_idx);
+EEG_fallback.chanlocs = EEG.chanlocs(selected_orig_idx);
+EEG_fallback.icachansind = 1:EEG_fallback.nbchan;
+
+% Clear inherited ICA fields before chanloc lookup to avoid transient
+% dimension mismatch checks inside EEGLAB utilities.
+EEG_fallback.icaweights = [];
+EEG_fallback.icasphere = [];
+EEG_fallback.icawinv = [];
+EEG_fallback.icaact = [];
+
+for chan_idx = 1:numel(EEG_fallback.chanlocs)
+    EEG_fallback.chanlocs(chan_idx).type = 'EEG';
+end
+
+lookup_file = which('Standard-10-5-Cap385_witheog.elp');
+if ~isempty(lookup_file)
+    try
+        EEG_fallback = pop_chanedit(EEG_fallback, 'lookup', lookup_file);
+    catch ME_lookup
+        warning('PrepareData_4:LookupFailed', ...
+            'Standard channel lookup failed during ICLabel fallback: %s', ME_lookup.message);
+    end
+end
+
+if isfield(EEG, 'icaweights') && ~isempty(EEG.icaweights) && ...
+   isfield(EEG, 'icasphere') && ~isempty(EEG.icasphere)
+    % Rebuild a consistent ICA factorization for selected channels:
+    % W_full = icaweights * icasphere (nComp x nICAch)
+    % W_sel  = W_full(:, selected_channels)
+    W_full = EEG.icaweights * EEG.icasphere;
+
+    [is_kept, kept_positions] = ismember(selected_orig_idx, ica_chan_idx);
+    kept_positions = kept_positions(is_kept);
+
+    if ~isempty(kept_positions)
+        W_sel = W_full(:, kept_positions);
+        EEG_fallback.icaweights = W_sel;
+        EEG_fallback.icasphere = eye(size(W_sel, 2));
+        EEG_fallback.icawinv = pinv(W_sel);
+        EEG_fallback.icaact = [];
+    end
+end
+end
+
+function scalp_idx = get_scalp_channel_indices(EEG)
+scalp_idx = [];
+if ~isfield(EEG, 'chanlocs') || isempty(EEG.chanlocs)
+    return;
+end
+
+if isfield(EEG.chanlocs, 'type')
+    scalp_idx = find(strcmpi({EEG.chanlocs.type}, 'EEG'));
+end
+
+if ~isempty(scalp_idx)
+    return;
+end
+
+chan_labels = lower(strtrim({EEG.chanlocs.labels}));
+exclude_patterns = {'eog', 'vertical', 'horizontal', 'mastoid', 'status'};
+exclude_exact = {'heog', 'veog', 'm1', 'm2', 'a1', 'a2'};
+
+keep_mask = true(1, numel(chan_labels));
+for idx = 1:numel(chan_labels)
+    label = chan_labels{idx};
+    if any(strcmp(label, exclude_exact))
+        keep_mask(idx) = false;
+        continue;
+    end
+    for pattern_idx = 1:numel(exclude_patterns)
+        if contains(label, exclude_patterns{pattern_idx})
+            keep_mask(idx) = false;
+            break;
+        end
+    end
+end
+
+scalp_idx = find(keep_mask);
+end
+
+function EEG = normalize_icachansind_metadata(EEG)
+if ~isfield(EEG, 'icaweights') || ~isfield(EEG, 'icasphere') || ...
+   isempty(EEG.icaweights) || isempty(EEG.icasphere)
+    return;
+end
+
+% Build a common channel dimension across ICA fields.
+n_weights = size(EEG.icaweights, 2);
+n_sphere_r = size(EEG.icasphere, 1);
+n_sphere_c = size(EEG.icasphere, 2);
+target_cols = min([n_weights, n_sphere_r, n_sphere_c, EEG.nbchan]);
+
+if target_cols <= 0
+    return;
+end
+
+% Trim ICA matrices so the model is algebraically consistent.
+EEG.icaweights = EEG.icaweights(:, 1:target_cols);
+EEG.icasphere = EEG.icasphere(1:target_cols, 1:target_cols);
+
+% Recompute inverse weights from the normalized unmixing matrix.
+W = EEG.icaweights * EEG.icasphere;
+EEG.icawinv = pinv(W);
+EEG.icaact = [];
+
+if ~isfield(EEG, 'icachansind') || isempty(EEG.icachansind)
+    EEG.icachansind = 1:target_cols;
+    return;
+end
+
+icachansind = EEG.icachansind(:)';
+icachansind = icachansind(icachansind >= 1 & icachansind <= EEG.nbchan);
+
+if numel(icachansind) < target_cols
+    extras = setdiff(1:EEG.nbchan, icachansind, 'stable');
+    n_needed = min(target_cols - numel(icachansind), numel(extras));
+    icachansind = [icachansind extras(1:n_needed)];
+end
+
+if numel(icachansind) > target_cols
+    icachansind = icachansind(1:target_cols);
+end
+
+if isempty(icachansind)
+    icachansind = 1:target_cols;
+end
+
+EEG.icachansind = icachansind;
+end
+
+end

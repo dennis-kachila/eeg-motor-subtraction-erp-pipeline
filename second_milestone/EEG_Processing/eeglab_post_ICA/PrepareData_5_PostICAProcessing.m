@@ -96,7 +96,7 @@ if cfg.interpolate_channels == 1
                 end
                 
                 % Look up standard locations
-                [EEG_temp, com] = pop_chanedit(EEG_temp, 'lookup','Standard-10-5-Cap385_witheog.elp');
+                [EEG_temp, ~] = pop_chanedit(EEG_temp, 'lookup','Standard-10-5-Cap385_witheog.elp');
                 original_chanlocs = EEG_temp.chanlocs;
                 clear EEG_temp;
             end
@@ -180,16 +180,32 @@ end
 % --------------------------------------------------------------
 % Final re-reference
 % --------------------------------------------------------------
-[EEG] = Rereference(EEG, cfg);
+reference_mode = 'not_applied';
+reference_channels_used = {};
 
-if cfg.runReref == 1 && ~isempty(cfg.Reference{1})
-    ref_labels = lower(strtrim(cfg.Reference));
-    chan_labels = lower(strtrim({EEG.chanlocs.labels}));
-    available_ref = ref_labels(ismember(ref_labels, chan_labels));
-    if isempty(available_ref)
-        fprintf('Final re-reference skipped (requested reference channels unavailable).\n');
+if cfg.runReref == 1
+    if ~isempty(cfg.Reference{1})
+        requested_ref = cfg.Reference;
+        requested_ref_lower = lower(strtrim(requested_ref));
+        chan_labels = lower(strtrim({EEG.chanlocs.labels}));
+        available_ref_mask = ismember(requested_ref_lower, chan_labels);
+        available_ref = requested_ref(available_ref_mask);
+
+        if isempty(available_ref)
+            fprintf('Requested reference channels unavailable. Applying average-reference fallback.\n');
+            [EEG, com] = pop_reref(EEG, [], 'keepref', 'on');
+            EEG = eegh(com, EEG);
+            reference_mode = 'average_fallback';
+        else
+            [EEG] = Rereference(EEG, cfg);
+            reference_mode = 'requested_reference';
+            reference_channels_used = available_ref;
+            fprintf('Final re-reference complete using available channels: %s\n', strjoin(lower(strtrim(available_ref)), ', '));
+        end
     else
-        fprintf('Final re-reference complete using available channels: %s\n', strjoin(available_ref, ', '));
+        [EEG] = Rereference(EEG, cfg);
+        reference_mode = 'average_requested';
+        fprintf('Final re-reference complete using average reference (configured).\n');
     end
 end
 
@@ -198,6 +214,8 @@ end
 % --------------------------------------------------------------
 fprintf('Saving final preprocessed data to: %s\n', output_path);
 EEG.cfg_postica = cfg;
+EEG.postica_reference_info.mode = reference_mode;
+EEG.postica_reference_info.channels_used = reference_channels_used;
 EEG.data = single(EEG.data);
 SaveMyData(EEG, output_file, output_path);
 

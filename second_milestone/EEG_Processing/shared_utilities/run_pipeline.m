@@ -27,14 +27,31 @@
 clear all; close all; clc;
 
 %% Add paths
-addpath('/data/projects/temporal_binding/code/shared_utilities');
-addpath('/data/projects/temporal_binding/code/eeglab_preproc');
-addpath('/data/projects/temporal_binding/code/eeglab_artifact_rejection');
-addpath('/data/projects/temporal_binding/code/eeglab_ICA');
-addpath('/data/projects/temporal_binding/code/eeglab_IC_rejection');
-addpath('/data/projects/temporal_binding/code/eeglab_post_ICA');
-addpath('/data/projects/temporal_binding/code/eeglab_epochs');
-addpath('/data/projects/temporal_binding/code/eeglab_ERP_analysis');
+this_script_dir = fileparts(mfilename('fullpath'));
+if isempty(this_script_dir)
+    this_script_dir = pwd;
+end
+code_root = fileparts(this_script_dir);
+
+step_dirs = {
+    'shared_utilities', ...
+    'eeglab_preproc', ...
+    'eeglab_artifact_rejection', ...
+    'eeglab_ICA', ...
+    'eeglab_IC_rejection', ...
+    'eeglab_post_ICA', ...
+    'eeglab_epochs', ...
+    'eeglab_ERP_analysis'
+};
+
+for d = 1:numel(step_dirs)
+    full_dir = fullfile(code_root, step_dirs{d});
+    if exist(full_dir, 'dir')
+        addpath(full_dir);
+    else
+        warning('run_pipeline:MissingPath', 'Path not found: %s', full_dir);
+    end
+end
 
 eeglab nogui;
 

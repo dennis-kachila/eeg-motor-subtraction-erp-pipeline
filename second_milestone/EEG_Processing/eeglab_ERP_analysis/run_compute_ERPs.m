@@ -5,6 +5,23 @@
 
 clear all; close all; clc;
 
+% Ensure shared utilities are available when launching this script directly.
+this_script_dir = fileparts(mfilename('fullpath'));
+if isempty(this_script_dir)
+    this_script_dir = pwd;
+end
+code_root = fileparts(this_script_dir);
+shared_utils_dir = fullfile(code_root, 'shared_utilities');
+
+if exist(shared_utils_dir, 'dir')
+    addpath(shared_utils_dir);
+else
+    error('Shared utilities folder not found: %s', shared_utils_dir);
+end
+
+% Keep local Step 7 helpers resolvable if MATLAB was launched elsewhere.
+addpath(this_script_dir);
+
 % OPTION 1: Process just sub-01
 subjects = {'sub-01'};
 

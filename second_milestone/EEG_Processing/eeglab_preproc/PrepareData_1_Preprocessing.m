@@ -61,8 +61,6 @@ disp(' ')
 clear ALLEEG;
 for F = 1:length(cfg.FileInEEG)
 
-    EEG = []; 
-
     % --------------------------------------------------------------
     % load the EEG file
     % --------------------------------------------------------------
@@ -145,7 +143,8 @@ for F = 1:length(cfg.FileInEEG)
                 [EEG, com] = pop_select(EEG, 'nochannel', dead_idx);
                 EEG = eegh(com, EEG);
             catch ME
-                warning('pop_select failed during dead-channel removal (%s). Falling back to manual channel removal.', ME.message);
+                warning('PrepareData_1:PopSelectFailed', '%s', ...
+                    sprintf('pop_select failed during dead-channel removal (%s). Falling back to manual channel removal.', ME.message));
                 keep_idx = setdiff(1:size(EEG.data, 1), dead_idx);
                 if ndims(EEG.data) <= 2
                     % Keep continuous data as 2-D (channels x samples).
@@ -179,11 +178,6 @@ for F = 1:length(cfg.FileInEEG)
     [EEG] = Rereference(EEG, cfg);
 
     % --------------------------------------------------------------
-    % filter data
-    % --------------------------------------------------------------  
-    [EEG] = ApplyFilters(EEG, cfg);
-    
-    % --------------------------------------------------------------
     % Downsample data 
     % --------------------------------------------------------------
     if cfg.runResample == 1
@@ -191,6 +185,13 @@ for F = 1:length(cfg.FileInEEG)
         [EEG, com] = pop_resample(EEG, cfg.SamplingRate);
         EEG = eegh(com, EEG);
     end
+
+    % --------------------------------------------------------------
+    % filter data
+    % --------------------------------------------------------------  
+    % Apply filters after downsampling to reduce memory pressure and
+    % improve stability on long recordings.
+    [EEG] = ApplyFilters(EEG, cfg);
 
     % --------------------------------------------------------------
     % Detrend the data (if needed)
