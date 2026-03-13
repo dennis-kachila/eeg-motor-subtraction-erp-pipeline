@@ -71,12 +71,12 @@ if ~isempty(ac_adapt) || ~isempty(ac_main)
     end
     if ~isempty(ac_baseline)
         peaks = get_grand_peaks(ac_baseline);
-        safe_plot_topo(ac_adapt, peaks, Sub, 'Action_Adaptation', fig_path);
+        plot_erp(ac_baseline, peaks, Sub, 'Action', 'Baseline_Keypress', fig_path);
     end
 else
     fprintf('  No action epoch files found\n');
 end
-        safe_plot_topo(ac_main, peaks, Sub, 'Action_Main', fig_path);
+
 if ~isempty(na_adapt) || ~isempty(na_main)
     results_noaction = compute_N1_P2(na_adapt, na_main, 'NoAction');
     save([out_path Sub '_ERP_results_noaction.mat'], 'results_noaction');
@@ -121,6 +121,7 @@ function safe_plot_topo(EEG, peaks, Sub, label, fig_path)
             label, ME.message);
     end
 end
+
 
 %% =========================================================
 function EEG = load_set(base_path, filename)

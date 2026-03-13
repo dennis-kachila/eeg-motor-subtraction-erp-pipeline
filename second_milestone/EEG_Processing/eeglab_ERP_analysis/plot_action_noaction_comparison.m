@@ -37,8 +37,7 @@ else
     error('No-Action file not found: %s or %s', na_file_bc, na_file_raw);
 end
 
-% Action Main (should be the RAW one before motor subtraction, or use motor-subtracted?)
-% Let's use the motor-subtracted one from eeglab_ERPs folder
+% Action Main: prefer motor-subtracted output; fall back to raw epochs if not yet generated
 ac_file_motor = [out_path Sub '_ses-02_task-action_eeg_main_action_motor_subtracted.set'];
 if exist(ac_file_motor, 'file')
     EEG_ac = pop_loadset(ac_file_motor);
