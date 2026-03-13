@@ -1,0 +1,19 @@
+    biosig4python supports reading various biosignal dataformats into Python.
+    The data is converted first into a simplified GDF (same simple data type
+    and same sampling rate for all channels) using biosig2gdf, and
+    the output is than processed and parsed by loadgdf.py().
+    The advantage of this approach over the python extension module is, that
+    it works on any platform (including MS Windows); the disadvantages is
+    it needs twice as much memory and an extra data copying step is needed.
+
+    Copyright (C) 2005,2006,2009,2020 Alois Schloegl <alois.schloegl@gmail.com>
+    This function is part of the "BioSig for Python" repository
+    (BioSig4Python) at http://biosig.sf.net/
+
+
+Requirements:
+    SCIPY or NUMPY needed
+
+Recommended:
+    MATPLOTLIB recommended
+

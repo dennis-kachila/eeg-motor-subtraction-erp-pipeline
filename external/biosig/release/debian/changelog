@@ -1,0 +1,526 @@
+biosig (3.9.0-1) stable; urgency=medium
+
+  [ Alois Schlögl ]
+  * new upstream release
+    - version bump to 3.9.0
+        there was already biosig4matlab v3.8.6 release
+        this bump unifies the version history
+    - bug fixes
+        security bugs in libbiosig/biosig-tools
+        matlab/octave: mexSSAVE
+    - matlab/octave: improvements in
+        microstimfit
+        MOD method (machine-learning-based optimal detection of [ei]ps[cv]
+        tools for re-organizing (selecting and combining) of sweeps
+    - dataformats: improvements and bug fixes in
+        GDF 1.x, HEKA, EDF+/BDF+, EGI, FAMOS, RHD, BrainVision, FIFF,
+    - python binding of libbiosig
+        compatible with numpy2, and new distutils
+    - matlab-support on debian
+
+ -- Alois Schlögl <alois.schloegl@gmail.com>  Fri, 21 Feb 2025 23:05:10 +0200
+
+biosig (2.5.0-1) stable; urgency=medium
+
+  [ Alois Schlögl ]
+  * octave-biosig:
+    - microStimfit <NEW>: - Stimfit analysis implemented in matlab/octave code
+    - minidet <NEW>: Miniature EPSC detection by template matching
+
+  * libbiosig:
+    - bug fixes an improved support for numours data formats including
+	  ATF, GDF, ITX, IBW, SCP, WFT/Nicolet
+
+ -- Alois Schlögl <alois.schloegl@gmail.com>  Fri, 30 Dec 2022 11:05:10 +0200
+
+biosig (2.4.0-2) unstable; urgency=medium
+
+  * Team upload.
+  * Add arch.patch: fix baseline violation and ftbfs. (Closes: #1012416)
+  * Standards-Version: 4.6.1 (routine-update)
+
+ -- Étienne Mollier <emollier@debian.org>  Mon, 06 Jun 2022 22:21:51 +0200
+
+biosig (2.4.0-1) unstable; urgency=medium
+
+  * Team upload.
+  * New upstream version
+  * Make sure package builds with dcmtk 3.6.7
+    Closes: #1010545
+
+ -- Andreas Tille <tille@debian.org>  Thu, 12 May 2022 08:46:25 +0200
+
+biosig (2.3.3-1) unstable; urgency=medium
+
+  [ Alois Schlögl ]
+  * libbiosig:
+  - improved support for the following data formats:
+    EDF+ : relax requirement that reserved field must start with "EDF+"
+    ABF2 : check scaling - seems good
+    ATF  : support multi-channel traces, segments will be concatanated
+           (and not considered different channels)
+    AXG  : extend support to some real-world data sets
+
+  * biosig4matlab
+  - add Machine-Learning-Optimal-Detection (MOD) method (Zhang et al. 2020,2021)
+    including demo script
+  - <NEW> rotary-decoder added (used in Zhang et al. 2020)
+    biosig4matlab/t250_ArtifactPreProcessingQualityControl/rotary_decoder.m
+  - sopen (gdf): add support for timezone information
+  - fix issue eeglab#93 (encoding of EDF+ annotations)
+
+  [ Andreas Tille ]
+  * Standards-Version: 4.6.0 (routine-update)
+
+ -- Alois Schlögl <alois.schloegl@gmail.com>  Sat, 02 Oct 2021 15:32:14 +0200
+
+
+biosig (2.1.2-5) stable; urgency=medium
+
+  * libbiosig: cherry pick some patches from upstream
+    - edf+: remove requirement for "reserved" field
+    - ibw: fix reading sample rate (bug #1010001)
+
+ -- Alois Schlögl <alois.schloegl@gmail.com>  Fri, 22 Apr 2022 12:07:32 +0200
+
+biosig (2.1.2-4) unstable; urgency=medium
+
+  * libbiosig: cherry pick some patches from upstream
+    - fix EDF-to-GDF conversion for certain files
+    - fix JSON export when SampleRate is undefined (e.g. Infinity)
+
+ -- Alois Schlögl <alois.schloegl@gmail.com>  Thu, 15 Apr 2021 21:04:32 +0200
+
+biosig (2.1.2-3) unstable; urgency=medium
+
+  [ Alois Schlögl ]
+  * octave-biosig:
+  - bug fix: EDF+ event import (eeglab issue #93)
+  - GDF files: support reading and writing of timezone information
+
+ -- Alois Schlögl <alois.schloegl@gmail.com>  Tue, 26 Jan 2021 22:47:42 +0200
+
+biosig (2.1.2-2) unstable; urgency=medium
+
+  * Team upload.
+  * debian/tests/control:
+    - Rename command1 to octave-ext-prints-usage
+    - Fix test failure with allow-stderr
+    - Try to avoid octave's X11 warnings
+  * Update merge request information in debian/patches
+  * debian/watch: version=4
+
+ -- Juhani Numminen <juhaninumminen0@gmail.com>  Sat, 16 Jan 2021 14:07:42 +0200
+
+biosig (2.1.2-1) unstable; urgency=medium
+
+  * Team upload.
+
+  [ Alois Schlögl ]
+  * update to upstream version 2.1.2
+  * build biosig4python for all supported python versions
+  * add biosig2gdf (which is required and useful for loadgdf{py,r})
+
+  [ Juhani Numminen ]
+  * debian/rules:
+    - Replace explicit dh_numpy3 and dh_octave* by "dh --with"
+    - Don't run the configure step twice and remove commented code
+    - Build python packages by executing pybuild commands
+    - Permissions fixing is now done by a patch
+  * Create d/octave-biosig.install to replace installation code in d/rules
+  * Create d/clean to replace cleaning code in d/rules
+  * Document non-installed files in d/not-installed and let dh_missing fail if
+    unknown files appear
+  * New patches:
+    - submake.patch: avoid "warning: jobserver unavailable"
+    - cppflags_ldflags.patch: apply LDFLAGS and CPPFLAGS
+    - delete_extra_dpkg_buildflags.patch: eliminate a potential source of
+      packager confusion
+    - disable_python_rule.patch: only use debian/rules to build python extension
+    - clean_biosig2gdf.patch: add biosig2gdf executable to cleaned files
+    - install_permissions.patch: give non-exec permissions to a *.pc file
+    - install_strip.patch: do not strip debug symbols from the shared library
+  * Use autopkgtest-pkg-python to check that the python module exists
+  * Add superficial autopkgtest: octave --eval mexSLOAD
+  * debian/control:
+    - Add ${devlibs:Depends} to libbiosig-dev Depends
+    - Fix typo in homepage
+    - Standards-Version: 4.5.1
+  * Trim trailing whitespace in debian/changelog
+
+ -- Juhani Numminen <juhaninumminen0@gmail.com>  Thu, 14 Jan 2021 17:09:54 +0200
+
+biosig (2.1.0-1) unstable; urgency=medium
+
+  * Adapt Vcs fields on Salsa to new source package name
+  * Build-Depends: python3-setuptools
+  * Closes: #972684, #973435
+  * adapt config.status file
+
+ -- Alois Schlögl <alois.schloegl@gmail.com>  Thu, 12 Nov 2020 23:17:41 +0200
+
+biosig (2.0.6-1) unstable; urgency=medium
+
+  [ Alois Schlögl ]
+  * Fix Build-Depends
+  * Fix Homepage
+  * Fix watch file
+  * add "Biosig for Octave and Matlab" and rename
+    debian source package from "biosig4c++" to "biosig"
+  * "Biosig for Octave and Matlab" is added to octave-biosig package
+  * push SONAMEVERSION (provides libbiosig3 instead of libbiosig2)
+  * fix configure for tinyxml
+  * update to new upstream (v2.0.6,
+    commit b605b38417630f4a5ee2fa7dcc886164041295da + some more changes)
+
+  [ Andreas Tille ]
+  * debhelper-compat 13 (routine-update)
+  * Add salsa-ci file (routine-update)
+  * Rules-Requires-Root: no (routine-update)
+  * Add Alois Schlögl to Uploaders
+  * Fix installation of manpages
+  * Reviewed debian/copyright
+
+ -- Alois Schlögl <alois.schloegl@gmail.com>  Mon, 24 Aug 2020 01:07:41 +0200
+
+biosig4c++ (1.9.5-2) UNRELEASED; urgency=medium
+
+  * Build-Depends: python3-all-dev to cope with piuparts issue
+
+ -- Andreas Tille <tille@debian.org>  Tue, 03 Mar 2020 09:07:32 +0100
+
+biosig4c++ (1.9.5-1) unstable; urgency=medium
+
+  [ Yaroslav Halchenko ]
+  * Fresh upstream release
+  * debian/patches
+    - dropped patches/fix_soname.patch -- upstreamed
+  * debian/control
+    - added libtinyxml-dev to build-depends
+
+  [ Andreas Tille ]
+  * Take over package into Debian Med team maintenance
+  * debian/gbp.conf: deleted since converted to default layout
+  * Provide symbols file only for architectures where it can be used
+    unchanged
+  * Add Build-Depends: libdcmtk-dev, libxml2-dev, libb64-dev
+    as upstream suggests
+  * debhelper-compat 12
+  * Standards-Version: 4.5.0
+  * Secure URI in copyright format
+  * Respect DEB_BUILD_OPTIONS in override_dh_auto_test target
+  * Remove trailing whitespace in debian/changelog
+  * Remove trailing whitespace in debian/rules
+  * Use secure URI in debian/watch.
+  * Remove empty debian/patches/series.
+  * Set upstream metadata fields: Archive, Repository.
+  * Drop Python2 support (some refinements for Python3 only
+    Closes: #936207
+  * Refresh symbols file
+    Closes: #925643
+  * Fix permissions
+  * Drop unused lintian-overrides
+
+  [ Alois Schlögl ]
+  * Release 1.9.5
+  * visibility of symbols are now managed (breaks ABI)
+  * tinyxml is now used from the operating system
+  * bug fixes
+  * <NEW> physicalunits provides command line
+    tool for encoding of physical units according
+    to ISO/IEEE 11073-10101:2004 Vital Signs Units of Measurement
+  * <NEW> biosig_fhir converts biosignal data into FHIR binary template format
+  * save2gdf, mexSLOAD:
+    add option --free-text-event-limiter=";" (save2gdf, mexSLOAD)
+
+ -- Andreas Tille <tille@debian.org>  Mon, 02 Mar 2020 08:32:47 +0100
+
+biosig4c++ (1.9.3-2) unstable; urgency=medium
+
+  * Team upload
+  * Provide symbols file only for architectures where it can be used
+    unchanged
+  * Add Build-Depends: libdcmtk-dev, libxml2-dev, libb64-dev
+    as upstream suggests
+
+ -- Andreas Tille <tille@debian.org>  Sun, 20 Jan 2019 22:09:35 +0100
+
+biosig4c++ (1.9.3-1) unstable; urgency=medium
+
+  * Team upload.
+
+  [ Andreas Tille ]
+  * New upstream version
+    Closes: #860081
+  * debian/gbp.conf:
+     - debian-branch is now debian
+     - cleanup from old syntax specifying default settings
+  * debhelper 9
+  * Point Vcs fields to salsa.debian.org
+  * Standards-Version: 4.3.0
+  * debian/blends: removed since redundant (debian/upstream/metadata)
+  * Drop -dbg package in favour of autogenerated one
+  * Add python3-biosig
+  * Delete outdated README.Debian
+  * Drop paragraph about source tarball generated from git from README.source
+  * Adapt lintian-overrides
+  * Use d-shlibs
+  * Several symbols from version 1.3.6 are missing thus there is an ABI change
+    and SOVERSION needs to be bumped
+    --> set SOVERSION=2
+  * Re-activate and update symbols file
+
+  [ Rafael Laboissiere ]
+  * d/control: Build-depends on dh-octave
+  * d/rules: Use dh_octave_substvar for determining octave:Depends
+    Closes: #890060
+  * Use unversioned path for installing the *.mex files
+    Closes: #734046
+
+ -- Andreas Tille <tille@debian.org>  Thu, 17 Jan 2019 14:44:34 +0100
+
+biosig4c++ (1.9.0-1) experimental; urgency=low
+
+  * new upstream release
+  * Experimental Support for next SCP
+  * structure of include files reorganized
+
+ -- Alois Schloegl <alois.schloegl@ist.ac.at>  Sat, 12 Aug 2017 21:55:02 +0200
+
+biosig4c++ (1.8.6-1) experimental; urgency=low
+
+  * libbiosig and libbiosig2 are now combined in
+    libbiosig.so.2
+  * new upstream release
+
+ -- Alois Schloegl <alois.schloegl@ist.ac.at>  Sun, 23 Jul 2017 21:55:02 +0200
+
+biosig4c++ (1.8.5-1) UNRELEASED; urgency=low
+
+  update upstream release
+  * the following codes for Post-Synaptic Events are now defined
+        ### 0x021_     miniature post-synaptic events
+        0x0211 EPSP - Excitatory Post-Synaptic Potentials
+        0x0212 IPSP - Inhibitory Post-Synaptic Potentials
+        0x0213 EPSC - Excitatory Post-Synaptic Currents
+        0x0214 IPSC - Inhibitory Post-Synaptic Currents
+
+  *  build scripts are improved
+  *  language bindings to Octave, Python, R
+     are now easier to build
+  * The python interface has been completely replaced,
+     the header structure is now returned in JSON format
+     and can be obtained with
+        HDR=json.loads(biosig.header("filename"))
+
+ -- Alois Schloegl <alois.schloegl@ist.ac.at>  Mon, 17 Jul 2017 07:15:02 +0200
+
+biosig4c++ (1.8.4-2) UNRELEASED; urgency=low
+
+  improve debian packaging
+  * add many lintian issues
+  * fix bug #734046: octave-biosig: Use unversioned path for installing the
+    *.mex files
+  * add hints from Yaroslav
+
+ -- Alois Schloegl <alois.schloegl@ist.ac.at>  Wed, 15 Feb 2017 08:15:02 +0200
+
+biosig4c++ (1.8.4-1) UNRELEASED; urgency=low
+
+  * update upstream release
+
+  * bug fixes for numerous file formats including
+    MIT-BIH, HL7aECG, EDFplus, EDF, BDF, CFS.
+  * bug fix for ARM (Raspberry Pi) platform
+  * gcc-6 compatibility
+
+  * support for HL7/FHIR binary templates added
+
+  * R binding added
+
+  * Python binding has changed, the metainformation
+    (header and annotations) is now provided in JSON
+    format. Use json.loads(...) or json.JSONDecode(...)
+    to extract ińdividual elements.
+
+  * debian/control
+    boosted policy compliance to 3.9.6
+
+ -- Alois Schloegl <alois.schloegl@ist.ac.at>  Tue, 07 Feb 2017 14:03:02  +0200
+
+biosig4c++ (1.7.0-1) UNRELEASED; urgency=low
+
+  * gcc-5 compatibility
+  * improved support for HEKA, ITX, AXG format
+  * improved support for GDF/BDF/EDF, SCP-ECG
+  * number of bug fixes and minor improvement
+
+ -- Alois Schloegl <alois.schloegl@ist.ac.at>  Tue, 17 Aug 2015 09:32:25  +0200
+
+biosig4c++ (1.6.1-1) UNRELEASED; urgency=low
+
+  * debian/control:
+       switch to dh-python2
+       boosted policy compliance to 3.9.5
+
+  * support for additional data formats
+       ABF1, AXG
+  * support improved for
+       CFS (performance, scaling), SCP (convert strings to UTF-8),
+       ISHNE, HEKA (TimeStamps, performance), MFER, IGOR
+  * bug fixes in supported data formats:
+       EDF+, ITX, HEKA (scaling), CFS
+
+  * JSON output format for header added.
+
+  * ABI changed:
+    The size of some structs, and some enumeration types have changed.
+    Most likely, You'll need to recompile your application, even if
+    the dynamic biosig library (.so, .dll) is used.
+
+  * API change: field CHANNEL->PhysDim is removed.
+     This is already deprecated for quite a while.
+     Use instead the function PhysDim3(CHANNEL->PhysDimCode)
+
+ -- Alois Schloegl <alois.schloegl@ist.ac.at>  Tue, 09 Sep 2014 22:32:25 +0200
+
+biosig4c++ (1.4.1-1) experimental; urgency=low
+
+  * Fresh upstream release:
+    - adopted up_correct_biosig_LIBS_in_mex and up_no_need_for_-lidn
+      patches
+    - restored some API removed in 1.4.0 (one overload
+      _Z8ReadByteIaEvRT_@Base was still removed, allowing to slip through)
+  * debian/watch: adjusted according to Alois (upstream) recommendation
+  * debian/control:
+    - Removed libxml2 from Build-Depends (upstream's hint)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Thu, 25 Oct 2012 10:22:07 -0400
+
+biosig4c++ (1.3.6-1) experimental; urgency=low
+
+  * New upstream (primarily bugfix) release
+  * debian/patches
+    - deb_no_mex_copy_upstairs: adjusted to just override COPY in mex/Makefile
+    - deb_no_locals: adopted upstream
+    - others refreshed to reflect (partial) adoption upstream and changes
+    - up_no_need_for_-lidn to remove obsolete -lidn
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 07 Sep 2012 14:44:22 -0400
+
+biosig4c++ (1.3.5-1) experimental; urgency=low
+
+  * New upstream release (restores compatibility with API 1.3 broken in
+    non-uploaded revisions)
+  * debian/patches
+    - 0001-Revert-do-not-install-dynamic-library-we-need-dynami.patch
+      to install shared library
+    - up_correct_biosig_LIBS_in_mex
+      to provide correct args for mkoctfile while linking against dynamic
+      library
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 11 Jul 2012 09:40:16 -0400
+
+biosig4c++ (1.3.0-2.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Port from python-support to dh_python2. (Closes: #785953)
+
+ -- Stefano Rivera <stefanor@debian.org>  Wed, 19 Aug 2015 20:32:12 +0200
+
+biosig4c++ (1.3.0-2) unstable; urgency=low
+
+  * Do not build biosig_{client,server} which are still experimental and
+    actually were not shipped within any package anyway (as a side-effect
+    Closes: #675582)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 03 Jun 2012 22:18:19 -0400
+
+biosig4c++ (1.3.0-1) unstable; urgency=low
+
+  * Fresh upstream release
+    - libbiosig now SOVERSION 1, thus libbiosig1{,-dbg} to replace
+      libbiosig0
+  * debian/copyright: updated for DEP5
+  * debian/patches:
+    - added up_memcpy_str_cast (sent upstream)
+    - removed up_for_loop_initial (upstreamed)
+    - removed up_*oct* (no hardcoded octave version information in
+      upstream Makefile any longer), deb_link_dynamically_python
+    - removed deb_link_dynamically in favor of specifying LIBEXT=so to
+      calls to make
+    - removed deb_use_borrowed_eventcodes: now debian/upstream-extern
+      provides needed extra external files (from biosig) and gets symlinked
+      as extern at build time
+    - refreshed deb_no_mex_copy_upstairs,deb_no_locals
+  * upstream-files/eventcodes.txt -- refreshed from online
+  * debian/control:
+    - new build-depends: gawk, libxml2-dev
+    - boosted policy to 3.9.3 -- no further changes
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Thu, 24 May 2012 09:22:13 -0400
+
+biosig4c++ (0.96.3+svn2677-4) UNRELEASED; urgency=low
+
+  * debian/upstream: Authors need to be separated by ' and ' rather than
+    by ','
+
+ -- Andreas Tille <tille@debian.org>  Wed, 09 May 2012 09:48:22 +0200
+
+biosig4c++ (0.96.3+svn2677-3) unstable; urgency=low
+
+  * ACK the .1 NMU (Thank you Miguel)
+    - debian/rules: call dh_numpy only if available
+  * Use unversioned mkoctfile (Closes: #665051).
+    Thanks Lucas Nussbaum for the report and Nicolas Bourdaud for the patch.
+  * debian/rules, debian/control
+    - fixed typo in debian/control resulting in octave:Depends
+    - adjusted conditional use of octave-depends across systems (should
+      generate octave:Depends subst for recent systems lacking
+      octave-depends)
+  * debian/patches: refreshed
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 11 Apr 2012 12:36:54 -0400
+
+biosig4c++ (0.96.3+svn2677-2.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fix "missing dependency on python-numpy" by adding dh_numpy under
+    override_dh_auto_install (Closes: #641790)
+
+ -- Miguel de Val Borro <miguel.deval@gmail.com>  Fri, 02 Dec 2011 20:02:39 +0100
+
+biosig4c++ (0.96.3+svn2677-2) unstable; urgency=low
+
+  * up_for_loop_initial patch to prevent FTBFS. Thanks Aurelien Jarno for
+    report and patch (Closes: #633346)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Sat, 09 Jul 2011 10:40:56 -0400
+
+biosig4c++ (0.96.3+svn2677-1) unstable; urgency=low
+
+  * Initial release (Closes: #585533)
+  * Ship and use a copy of eventcodes.txt from biosig project
+  * Patches added:
+    - up_system_octave_version to build against default available
+      version of octave
+    - deb_no_mex_copy_upstairs to not try copy resultant .mex files
+      outside of the tree
+    - deb_link_dynamically* to assure dynamic linking against the library
+    - deb_no_locals to avoid errorneous linking against /usr/local
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Thu, 05 May 2011 12:28:27 -0400
+
+biosig4c++ (0.94.2+svn2552-1~pre1) UNRELEASED; urgency=low
+
+  * New upstream snapshot: some API extensions in the library interface
+  * Assure linking of .so against used libraries
+  * Symlinks for the missing manpages
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 29 Oct 2010 00:58:54 -0400
+
+biosig4c++ (0.94.1+svn2521-1~pre0) UNRELEASED; urgency=low
+
+  * Initial Debian packaging.
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 11 Jun 2010 01:19:48 -0400
