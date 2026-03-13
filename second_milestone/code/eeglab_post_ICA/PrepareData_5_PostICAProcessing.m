@@ -183,7 +183,14 @@ end
 [EEG] = Rereference(EEG, cfg);
 
 if cfg.runReref == 1 && ~isempty(cfg.Reference{1})
-    fprintf('Final re-reference to mastoids complete.\n');
+    ref_labels = lower(strtrim(cfg.Reference));
+    chan_labels = lower(strtrim({EEG.chanlocs.labels}));
+    available_ref = ref_labels(ismember(ref_labels, chan_labels));
+    if isempty(available_ref)
+        fprintf('Final re-reference skipped (requested reference channels unavailable).\n');
+    else
+        fprintf('Final re-reference complete using available channels: %s\n', strjoin(available_ref, ', '));
+    end
 end
 
 % --------------------------------------------------------------

@@ -66,7 +66,43 @@ end
 % --------------------------------------------------------------
 if cfg.use_iclabel
     fprintf('Running ICLabel classification...\n');
-    EEG = pop_iclabel(EEG, 'default');
+    n_components = size(EEG.icaweights, 1);
+    try
+        EEG = pop_iclabel(EEG, 'default');
+    catch ME_iclabel
+        fprintf('ICLabel failed on native montage (%s). Trying channel-consistent fallback...\n', ME_iclabel.message);
+
+        EEG_fallback = EEG;
+        if isfield(EEG, 'icachansind') && ~isempty(EEG.icachansind)
+            ic_idx = EEG.icachansind(:)';
+            valid_idx = ic_idx(ic_idx >= 1 & ic_idx <= size(EEG.data, 1));
+            if numel(valid_idx) == size(EEG.icaweights, 2)
+                EEG_fallback.data = EEG.data(valid_idx, :, :);
+                EEG_fallback.nbchan = numel(valid_idx);
+                if numel(EEG.chanlocs) >= max(valid_idx)
+                    EEG_fallback.chanlocs = EEG.chanlocs(valid_idx);
+                else
+                    EEG_fallback.chanlocs = EEG.chanlocs(1:EEG_fallback.nbchan);
+                end
+                EEG_fallback.icachansind = 1:EEG_fallback.nbchan;
+            end
+        end
+
+        try
+            EEG_fallback = pop_iclabel(EEG_fallback, 'default');
+            EEG.etc.ic_classification = EEG_fallback.etc.ic_classification;
+            fprintf('ICLabel fallback succeeded.\n');
+        catch ME_iclabel_fallback
+            warning('PrepareData_4:ICLabelFailed', ...
+                'ICLabel failed after fallback: %s. Keeping all components.', ME_iclabel_fallback.message);
+            classifications = zeros(n_components, 7);
+            classifications(:, 1) = 1; % brain=100%% fallback to avoid accidental rejection
+            EEG.etc.ic_classification.ICLabel.classifications = classifications;
+            EEG.etc.ic_classification.ICLabel.classes = ...
+                {'brain','muscle','eye','heart','line noise','channel noise','other'};
+            EEG.etc.ic_classification.ICLabel.fallback_error = ME_iclabel_fallback.message;
+        end
+    end
 else
     error('PrepareData_4:ConfigUnsupported', 'cfg.use_iclabel=0 is not supported in this workflow.');
 end

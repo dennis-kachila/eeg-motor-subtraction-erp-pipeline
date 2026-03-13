@@ -2,7 +2,8 @@ function PrepareData_6_ExtractConditions(Sub, cfg)
 
 %% Unified Step 6: Extract Conditions
 % AUTO-DETECTS condition type (Action vs No-Action) and calls appropriate function
-% PROCESSES ALL POST-ICA FILES found for this subject
+% PROCESSES ONE SESSION FILE per call when invoked through RunMyScripts
+% (falls back to processing all post-ICA files only for manual/direct calls)
 % UPDATED: Extended epoch windows (-500 to +850ms) for complete P2 analysis post motor-subtraction
 
 % Initialize EEGLAB
@@ -19,19 +20,22 @@ if ~isfolder(cfg.OUTPath)
 end
 
 % --------------------------------------------------------------
-% Find ALL post-ICA files for this subject
+% Determine files to process (session-specific by default)
 % --------------------------------------------------------------
-fprintf('\n=== Searching for all post-ICA files for %s ===\n', Sub);
+fprintf('\n=== Resolving post-ICA input files for %s ===\n', Sub);
 
-all_files = dir([cfg.PathInEEG Sub '_ses-*_task-*_eeg_post_ICA.set']);
-
-if isempty(all_files)
-    error('No post-ICA files found for %s in %s', Sub, cfg.PathInEEG);
-end
-
-fprintf('Found %d file(s) to process:\n', length(all_files));
-for i = 1:length(all_files)
-    fprintf('  %d. %s\n', i, all_files(i).name);
+if isfield(cfg, 'FileInEEG') && ~isempty(cfg.FileInEEG) && isfile([cfg.PathInEEG cfg.FileInEEG])
+    all_files = struct('name', cfg.FileInEEG);
+    fprintf('Session-specific call detected. Processing only: %s\n', cfg.FileInEEG);
+else
+    all_files = dir([cfg.PathInEEG Sub '_ses-*_task-*_eeg_post_ICA.set']);
+    if isempty(all_files)
+        error('No post-ICA files found for %s in %s', Sub, cfg.PathInEEG);
+    end
+    fprintf('Manual/backward-compatible mode: found %d file(s):\n', length(all_files));
+    for i = 1:length(all_files)
+        fprintf('  %d. %s\n', i, all_files(i).name);
+    end
 end
 
 % --------------------------------------------------------------

@@ -62,33 +62,33 @@ if ~isempty(ac_adapt) || ~isempty(ac_main)
     if ~isempty(ac_adapt)
         peaks = get_grand_peaks(ac_adapt);
         plot_erp( ac_adapt, peaks, Sub, 'Action', 'Adaptation', fig_path);
-        plot_topo(ac_adapt, peaks, Sub, 'Action_Adaptation', fig_path);
+        safe_plot_topo(ac_adapt, peaks, Sub, 'Action_Adaptation', fig_path);
     end
     if ~isempty(ac_main)
         peaks = get_grand_peaks(ac_main);
         plot_erp( ac_main, peaks, Sub, 'Action', 'Main', fig_path);
-        plot_topo(ac_main, peaks, Sub, 'Action_Main', fig_path);
+        safe_plot_topo(ac_main, peaks, Sub, 'Action_Main', fig_path);
     end
     if ~isempty(ac_baseline)
         peaks = get_grand_peaks(ac_baseline);
-        plot_erp(ac_baseline, peaks, Sub, 'Action', 'Baseline_Keypress', fig_path);
+        safe_plot_topo(ac_adapt, peaks, Sub, 'Action_Adaptation', fig_path);
     end
 else
     fprintf('  No action epoch files found\n');
 end
-
+        safe_plot_topo(ac_main, peaks, Sub, 'Action_Main', fig_path);
 if ~isempty(na_adapt) || ~isempty(na_main)
     results_noaction = compute_N1_P2(na_adapt, na_main, 'NoAction');
     save([out_path Sub '_ERP_results_noaction.mat'], 'results_noaction');
     if ~isempty(na_adapt)
         peaks = get_grand_peaks(na_adapt);
         plot_erp( na_adapt, peaks, Sub, 'NoAction', 'Adaptation', fig_path);
-        plot_topo(na_adapt, peaks, Sub, 'NoAction_Adaptation', fig_path);
+        safe_plot_topo(na_adapt, peaks, Sub, 'NoAction_Adaptation', fig_path);
     end
     if ~isempty(na_main)
         peaks = get_grand_peaks(na_main);
         plot_erp( na_main, peaks, Sub, 'NoAction', 'Main', fig_path);
-        plot_topo(na_main, peaks, Sub, 'NoAction_Main', fig_path);
+        safe_plot_topo(na_main, peaks, Sub, 'NoAction_Main', fig_path);
     end
 else
     fprintf('  No no-action epoch files found\n');
@@ -113,6 +113,14 @@ save_subject_excel(Sub, out_path, results_noaction_safe, results_action_safe);
 fprintf('\nDone computing ERPs for %s.\n\n', Sub);
 end
 
+function safe_plot_topo(EEG, peaks, Sub, label, fig_path)
+    try
+        plot_topo(EEG, peaks, Sub, label, fig_path);
+    catch ME
+        fprintf('  Warning: Topography plot failed for %s (%s). Continuing without topo plot.\n', ...
+            label, ME.message);
+    end
+end
 
 %% =========================================================
 function EEG = load_set(base_path, filename)
