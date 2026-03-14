@@ -6,14 +6,17 @@ function cfg = GetFilePathsAndInitializeToolboxes
 Path = cd;
 cfg.PATH.AnalysisPath = [Path filesep];
 
-% Assume standard folder structure:
+% Assume standard folder structure (current milestone layout):
 % project/
 %   ├── sourcedata/
 %   ├── derivatives/
-%   └── code/  (where scripts are)
+%   └── EEG_Processing/  (where scripts are)
 %       ├── eeglab_preproc/
 %       ├── shared_utilities/
 %       └── Pipelines/
+%
+% Legacy support is also kept for:
+% project/code/
 
 % Try to find the base project folder
 if contains(Path, 'EEG_Processing')
@@ -126,10 +129,10 @@ if exist(biosig_path, 'dir')
         
         % Add specific needed subfolders, excluding problematic legacy functions
         biosig_subfolds = {
-            'eeglab',           % EEGLAB integration
-            't200_FileAccess',  % File I/O (contains sopen for BDF import)
-            't210_Events',      % Event handling
-            't250_ArtifactPreProcessingQualityControl'  % Artifact detection
+            'eeglab'; ...          % EEGLAB integration
+            't200_FileAccess'; ... % File I/O (contains sopen for BDF import)
+            't210_Events'; ...     % Event handling
+            't250_ArtifactPreProcessingQualityControl' ... % Artifact detection
         };
         
         for bf = 1:length(biosig_subfolds)

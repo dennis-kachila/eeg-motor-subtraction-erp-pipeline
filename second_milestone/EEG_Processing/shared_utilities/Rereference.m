@@ -5,14 +5,14 @@ if cfg.runReref == 1
       [EEG, com] = pop_reref(EEG, cfg.Reference{1}, 'keepref', 'on');
       EEG = eegh(com, EEG);
    else
-      chan_labels = lower(strtrim({EEG.chanlocs.labels}));
+      chan_labels = strtrim({EEG.chanlocs.labels});
       ref_labels = cfg.Reference;
       which_ref = [];
       missing_refs = {};
 
       for r = 1:numel(ref_labels)
-         this_ref = lower(strtrim(ref_labels{r}));
-         idx = find(strcmp(chan_labels, this_ref), 1, 'first');
+         this_ref = strtrim(ref_labels{r});
+         idx = find(strcmpi(chan_labels, this_ref), 1, 'first');
          if ~isempty(idx)
             which_ref(end+1) = idx; %#ok<AGROW>
          else

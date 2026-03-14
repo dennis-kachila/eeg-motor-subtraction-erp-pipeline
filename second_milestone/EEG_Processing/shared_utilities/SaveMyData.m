@@ -11,7 +11,7 @@ EEG = eegh(com, EEG);
 [EEG, com] = eeg_checkset( EEG );
 EEG = eegh(com, EEG);
 
-[EEG, com] = pop_saveset( EEG, Name, Path);
-EEG = eegh(com, EEG);
+[~, com] = pop_saveset( EEG, Name, Path);
+eegh(com, EEG);
 
     
