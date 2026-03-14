@@ -66,8 +66,8 @@ for F = 1:length(cfg.FileInEEG)
     % --------------------------------------------------------------
     fprintf('\nNow loading file %s.\n\nFile %d of %d\n\n', cfg.FileInEEG{F},F,length(cfg.FileInEEG) );  
 
-    % Call pop_biosig with explicit parameters: filename, channels (0=all), type (auto-detect)
-   [EEG, com] = pop_biosig([cfg.PathInEEG cfg.FileInEEG{F}], 0);
+    % Load via BIOSIG using default channel selection (all channels).
+    [EEG, com] = pop_biosig([cfg.PathInEEG cfg.FileInEEG{F}]);
     EEG = eegh(com, EEG);
     EEG.data = double(EEG.data);
     
@@ -178,6 +178,12 @@ for F = 1:length(cfg.FileInEEG)
     [EEG] = Rereference(EEG, cfg);
 
     % --------------------------------------------------------------
+    % filter data
+    % --------------------------------------------------------------
+    % Client requirement: filter first, then downsample.
+    [EEG] = ApplyFilters(EEG, cfg);
+
+    % --------------------------------------------------------------
     % Downsample data 
     % --------------------------------------------------------------
     if cfg.runResample == 1
@@ -185,13 +191,6 @@ for F = 1:length(cfg.FileInEEG)
         [EEG, com] = pop_resample(EEG, cfg.SamplingRate);
         EEG = eegh(com, EEG);
     end
-
-    % --------------------------------------------------------------
-    % filter data
-    % --------------------------------------------------------------  
-    % Apply filters after downsampling to reduce memory pressure and
-    % improve stability on long recordings.
-    [EEG] = ApplyFilters(EEG, cfg);
 
     % --------------------------------------------------------------
     % Detrend the data (if needed)

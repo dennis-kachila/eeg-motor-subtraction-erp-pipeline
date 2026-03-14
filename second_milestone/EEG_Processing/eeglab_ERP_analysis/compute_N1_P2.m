@@ -117,21 +117,18 @@ end
 
 % ------------------------------------------------------------------
 function pk = compute_peaks(erp, times, P50_idx, N1_idx, P2_idx)
-    % CHANGE 3: P50 added (most positive in 30-80ms window)
-    [P50_amp, P50_rel] = max(erp(P50_idx));
-    P50_lat            = times(P50_idx(P50_rel));
+    % Tie-aware extrema + sub-sample interpolation reduce quantization
+    % artifacts where many latencies can collapse to the same sample.
+    P50_seg = erp(P50_idx);
+    [P50_amp, P50_lat] = robust_peak_latency(P50_seg, times(P50_idx), +1);
 
-    % N1: most negative in window
     N1_seg = erp(N1_idx);
-    [N1_peak_amp, N1_rel] = min(N1_seg);
-    N1_peak_lat           = times(N1_idx(N1_rel));
-    N1_mean_amp           = mean(N1_seg);
+    [N1_peak_amp, N1_peak_lat] = robust_peak_latency(N1_seg, times(N1_idx), -1);
+    N1_mean_amp = mean(N1_seg);
 
-    % P2: most positive in window
     P2_seg = erp(P2_idx);
-    [P2_peak_amp, P2_rel] = max(P2_seg);
-    P2_peak_lat           = times(P2_idx(P2_rel));
-    P2_mean_amp           = mean(P2_seg);
+    [P2_peak_amp, P2_peak_lat] = robust_peak_latency(P2_seg, times(P2_idx), +1);
+    P2_mean_amp = mean(P2_seg);
 
     pk.P50_peak_amp = P50_amp;
     pk.P50_peak_lat = P50_lat;
@@ -141,6 +138,51 @@ function pk = compute_peaks(erp, times, P50_idx, N1_idx, P2_idx)
     pk.P2_peak_amp  = P2_peak_amp;
     pk.P2_peak_lat  = P2_peak_lat;
     pk.P2_mean_amp  = P2_mean_amp;
+end
+
+function [peak_amp, peak_lat] = robust_peak_latency(seg, seg_times, polarity)
+    seg = double(seg(:)');
+    seg_times = double(seg_times(:)');
+
+    if isempty(seg)
+        peak_amp = NaN;
+        peak_lat = NaN;
+        return;
+    end
+
+    smooth_seg = movmean(seg, min(5, numel(seg)));
+    if polarity > 0
+        target_val = max(smooth_seg);
+    else
+        target_val = min(smooth_seg);
+    end
+
+    tol = max(1e-9, 1e-6 * max(1, range(smooth_seg)));
+    cand = find(abs(smooth_seg - target_val) <= tol);
+    if isempty(cand)
+        [~, idx] = min(abs(smooth_seg - target_val));
+    else
+        idx = round(mean(cand));
+    end
+
+    peak_amp = seg(idx);
+    peak_lat = seg_times(idx);
+
+    % Quadratic interpolation around the extremum for sub-sample latency.
+    if idx > 1 && idx < numel(seg)
+        y1 = seg(idx - 1);
+        y2 = seg(idx);
+        y3 = seg(idx + 1);
+        denom = (y1 - 2*y2 + y3);
+        if abs(denom) > 1e-12
+            delta = 0.5 * (y1 - y3) / denom;
+            if abs(delta) <= 1
+                dt = seg_times(2) - seg_times(1);
+                peak_lat = peak_lat + delta * dt;
+                peak_amp = y2 - 0.25 * (y1 - y3) * delta;
+            end
+        end
+    end
 end
 
 
@@ -167,8 +209,25 @@ function epoch_idx = get_tone_epochs(EEG, tone_type)
     epoch_idx = false(1, EEG.trials);
     for ep = 1:EEG.trials
         ev = EEG.epoch(ep).eventtype;
-        if iscell(ev),  epoch_idx(ep) = any(strcmp(ev, tone_type));
-        else,           epoch_idx(ep) = strcmp(ev, tone_type);
+        if ~iscell(ev)
+            ev = {ev};
+        end
+
+        for k = 1:numel(ev)
+            ek = ev{k};
+            if ischar(ek) || isstring(ek)
+                if strcmp(char(ek), tone_type) || contains(char(ek), tone_type)
+                    epoch_idx(ep) = true;
+                    break;
+                end
+            elseif isnumeric(ek)
+                if (strcmp(tone_type, 'Tone_Low')  && ek == 61) || ...
+                   (strcmp(tone_type, 'Tone_Med')  && ek == 62) || ...
+                   (strcmp(tone_type, 'Tone_High') && ek == 63)
+                    epoch_idx(ep) = true;
+                    break;
+                end
+            end
         end
     end
 end

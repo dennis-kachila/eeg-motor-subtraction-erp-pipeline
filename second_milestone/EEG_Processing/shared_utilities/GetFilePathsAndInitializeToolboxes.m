@@ -140,26 +140,19 @@ end
 
 if exist(biosig_path, 'dir')
     if isempty(which('sopen'))
-        % Add BIOSIG to path (selective: exclude legacy maybe-missing/freemat subdirs
-        % that shadow MATLAB built-ins and cause issues with table loading)
-        addpath(biosig_path);  % Main folder only
-        
-        % Add specific needed subfolders, excluding problematic legacy functions
-        biosig_subfolds = {
-            'eeglab'; ...          % EEGLAB integration
-            't200_FileAccess'; ... % File I/O (contains sopen for BDF import)
-            't210_Events'; ...     % Event handling
-            't250_ArtifactPreProcessingQualityControl' ... % Artifact detection
-        };
-        
-        for bf = 1:length(biosig_subfolds)
-            subfold = fullfile(biosig_path, biosig_subfolds{bf});
-            if exist(subfold, 'dir')
-                addpath(subfold);
+        % Add only the BIOSIG subfolders needed for BDF loading.
+        % Using selective subfolders avoids shadowing MATLAB/EEGLAB built-ins
+        % present in other BIOSIG trees (e.g. filter.m, classify.m, bandpower.m).
+        % biosig2eeglab.m has been patched to sanitize InChanSelect (handles
+        % 0-indexed values returned by sopen when partial BIOSIG is loaded).
+        biosig_subfolders = {'t200_FileAccess', 't210_Events', 't250_ArtifactPreProcessingQualityControl'};
+        for k = 1:numel(biosig_subfolders)
+            sf = fullfile(biosig_path, biosig_subfolders{k});
+            if exist(sf, 'dir')
+                addpath(sf);
             end
         end
-        
-        fprintf('BIOSIG added to path (selective): %s\n', biosig_path);
+        fprintf('BIOSIG added to path (selective subfolders for BDF loading): %s\n', biosig_path);
     else
         fprintf('BIOSIG already on path.\n');
     end

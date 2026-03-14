@@ -12,8 +12,8 @@ addpath(fullfile(projectRoot, 'EEG_Processing', 'eeglab_post_ICA'));
 addpath(fullfile(projectRoot, 'EEG_Processing', 'eeglab_epochs'));
 addpath(fullfile(projectRoot, 'EEG_Processing', 'eeglab_ERP_analysis'));
 
-addpath(genpath(fullfile(fileparts(projectRoot), 'external', 'biosig')));
-addpath(fullfile(fileparts(projectRoot), 'external', 'eeglab'));
+% Initialize toolbox paths via shared utility to avoid BIOSIG genpath shadowing.
+GetFilePathsAndInitializeToolboxes;
 eeglab nogui;
 
 subjects = {'sub-01'};

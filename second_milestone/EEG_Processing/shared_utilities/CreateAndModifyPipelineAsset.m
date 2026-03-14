@@ -147,7 +147,7 @@ cfg.RunICA.EndBsl             = 0;
 % ICA parameters
 cfg.RunICA.ica_type           = 'auto_fast';
 cfg.RunICA.ica_extended       = 1;
-cfg.RunICA.ica_chans          = [];
+cfg.RunICA.ica_chans          = [];   % empty => use all channels by default
 cfg.RunICA.ica_ncomps         = 55;
 
 
@@ -185,8 +185,8 @@ cfg.PostICA.probability_threshold = 5;
 % Channel interpolation (keep off)
 cfg.PostICA.interpolate_channels = 0;
 
-% Final re-reference to mastoids
-cfg.PostICA.runReref              = 1;
+% Post-ICA rereference is intentionally disabled (client requirement)
+cfg.PostICA.runReref              = 0;
 cfg.PostICA.Reference             = {'Mastoid Left', 'Mastoid Right'};
 
 

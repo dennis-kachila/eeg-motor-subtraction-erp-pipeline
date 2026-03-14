@@ -14,7 +14,7 @@
 % unless you filter with 'session_filter'.
 %
 % PIPELINE STEPS:
-%   1 - Preprocessing (filter, rereference, downsample)
+%   1 - Preprocessing (rereference, filter, then downsample)
 %   2 - Automated artifact rejection (pop_clean_rawdata)
 %   3 - ICA decomposition  [slow - run overnight]
 %   4 - IC rejection (ICLabel)

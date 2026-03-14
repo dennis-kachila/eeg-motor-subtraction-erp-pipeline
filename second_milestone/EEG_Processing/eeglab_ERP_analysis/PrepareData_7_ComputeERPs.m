@@ -28,6 +28,14 @@ ac_adapt    = load_set(epo_path, [Sub '_ses-02_task-action_eeg_adaptation_action
 ac_main     = load_set(epo_path, [Sub '_ses-02_task-action_eeg_main_action.set']);
 ac_baseline = load_set(epo_path, [Sub '_ses-02_task-action_eeg_baseline_action.set']);
 
+% Shared scale for direct topography comparison across conditions/blocks.
+shared_topo_clim = compute_shared_topo_clim({ac_adapt, ac_main, na_adapt, na_main, ac_baseline});
+fprintf('  Shared topography color limits: [%.2f, %.2f] uV\n', shared_topo_clim(1), shared_topo_clim(2));
+
+if ~isempty(ac_baseline)
+    plot_motor_template_topography(ac_baseline, Sub, fig_path, shared_topo_clim);
+end
+
 % Run motor subtraction FIRST (if action files exist)
 if ~isempty(ac_main) && ~isempty(ac_baseline)
     fprintf('\n--- Running Motor Subtraction ---\n');
@@ -62,12 +70,12 @@ if ~isempty(ac_adapt) || ~isempty(ac_main)
     if ~isempty(ac_adapt)
         peaks = get_grand_peaks(ac_adapt);
         plot_erp( ac_adapt, peaks, Sub, 'Action', 'Adaptation', fig_path);
-        safe_plot_topo(ac_adapt, peaks, Sub, 'Action_Adaptation', fig_path);
+        safe_plot_topo(ac_adapt, peaks, Sub, 'Action_Adaptation', fig_path, shared_topo_clim);
     end
     if ~isempty(ac_main)
         peaks = get_grand_peaks(ac_main);
         plot_erp( ac_main, peaks, Sub, 'Action', 'Main', fig_path);
-        safe_plot_topo(ac_main, peaks, Sub, 'Action_Main', fig_path);
+        safe_plot_topo(ac_main, peaks, Sub, 'Action_Main', fig_path, shared_topo_clim);
     end
     if ~isempty(ac_baseline)
         peaks = get_grand_peaks(ac_baseline);
@@ -83,12 +91,12 @@ if ~isempty(na_adapt) || ~isempty(na_main)
     if ~isempty(na_adapt)
         peaks = get_grand_peaks(na_adapt);
         plot_erp( na_adapt, peaks, Sub, 'NoAction', 'Adaptation', fig_path);
-        safe_plot_topo(na_adapt, peaks, Sub, 'NoAction_Adaptation', fig_path);
+        safe_plot_topo(na_adapt, peaks, Sub, 'NoAction_Adaptation', fig_path, shared_topo_clim);
     end
     if ~isempty(na_main)
         peaks = get_grand_peaks(na_main);
         plot_erp( na_main, peaks, Sub, 'NoAction', 'Main', fig_path);
-        safe_plot_topo(na_main, peaks, Sub, 'NoAction_Main', fig_path);
+        safe_plot_topo(na_main, peaks, Sub, 'NoAction_Main', fig_path, shared_topo_clim);
     end
 else
     fprintf('  No no-action epoch files found\n');
@@ -113,13 +121,73 @@ save_subject_excel(Sub, out_path, results_noaction_safe, results_action_safe);
 fprintf('\nDone computing ERPs for %s.\n\n', Sub);
 end
 
-function safe_plot_topo(EEG, peaks, Sub, label, fig_path)
+function safe_plot_topo(EEG, peaks, Sub, label, fig_path, shared_topo_clim)
     try
-        plot_topo(EEG, peaks, Sub, label, fig_path);
+        plot_topo(EEG, peaks, Sub, label, fig_path, shared_topo_clim);
     catch ME
         fprintf('  Warning: Topography plot failed for %s (%s). Continuing without topo plot.\n', ...
             label, ME.message);
     end
+end
+
+function clim_vals = compute_shared_topo_clim(eeg_list)
+    max_abs = 0;
+    for ii = 1:numel(eeg_list)
+        EEG = eeg_list{ii};
+        if isempty(EEG) || ~isfield(EEG, 'data') || isempty(EEG.data)
+            continue;
+        end
+
+        n_scalp = min(64, EEG.nbchan);
+        erp = mean(double(EEG.data(1:n_scalp, :, :)), 3);
+
+        if isfield(EEG, 'times') && ~isempty(EEG.times)
+            win_idx = EEG.times >= -200 & EEG.times <= 300;
+            if any(win_idx)
+                erp = erp(:, win_idx);
+            end
+        end
+
+        this_max = max(abs(erp(:)));
+        if isfinite(this_max)
+            max_abs = max(max_abs, this_max);
+        end
+    end
+
+    if max_abs <= 0
+        max_abs = 1;
+    end
+    clim_vals = [-max_abs, max_abs];
+end
+
+function plot_motor_template_topography(EEG_bsl, Sub, fig_path, shared_topo_clim)
+    n_scalp = min(64, EEG_bsl.nbchan);
+    times = EEG_bsl.times;
+
+    % Build motor template from baseline block with a pre-keypress baseline.
+    bsl_win = [-150 -50];
+    bsl_lo = max(bsl_win(1), times(1) + 1);
+    bsl_hi = min(bsl_win(2), times(end) - 1);
+    EEG_bsl_bc = pop_rmbase(EEG_bsl, [bsl_lo bsl_hi]);
+    motor_template = mean(double(EEG_bsl_bc.data(1:n_scalp, :, :)), 3);
+
+    % Represent the template at keypress onset (0 ms, keypress-locked).
+    [~, zero_idx] = min(abs(times));
+    topo_data = motor_template(:, zero_idx);
+
+    topo_chanlocs = ensure_topo_chanlocs(EEG_bsl.chanlocs(1:n_scalp));
+    topo_args = {'electrodes', 'on', 'style', 'map', 'shading', 'flat', ...
+                 'plotrad', 0.5, 'headrad', 0.5, 'intrad', 0.5};
+
+    fig = figure('Position', [100 100 560 460], 'Visible', 'off');
+    draw_topomap(topo_data, topo_chanlocs, topo_args, shared_topo_clim);
+    clim(shared_topo_clim);
+    colorbar;
+    title(sprintf('Motor Template Topography (%.0f ms, keypress-locked)', times(zero_idx)), 'FontSize', 12);
+    sgtitle(sprintf('%s  |  Action Baseline Motor Template', Sub), 'FontSize', 13);
+    saveas(fig, [fig_path Sub '_motor_template_topography.png']);
+    close(fig);
+    fprintf('  Saved: %s_motor_template_topography.png\n', Sub);
 end
 
 
@@ -310,7 +378,7 @@ end
 %% plot_topo  - P50, N1, P2 scalp maps at peak latencies
 %% =========================================================
 
-function plot_topo(EEG, peaks, Sub, label, fig_path)
+function plot_topo(EEG, peaks, Sub, label, fig_path, shared_topo_clim)
     times   = EEG.times;
     n_scalp = min(64, EEG.nbchan);
     topo_chanlocs = ensure_topo_chanlocs(EEG.chanlocs(1:n_scalp));
@@ -320,34 +388,27 @@ function plot_topo(EEG, peaks, Sub, label, fig_path)
     N1_topo  = get_topo(peaks.N1_lat);
     P2_topo  = get_topo(peaks.P2_lat);
 
-    % Auto-scale each component to its own data range
-    % Symmetric around zero
-    make_clim = @(topo) [-1 1] * max(max(abs(topo)), 1);
-    clim_P50 = make_clim(P50_topo);
-    clim_N1  = make_clim(N1_topo);
-    clim_P2  = make_clim(P2_topo);
-
     topo_args = {'electrodes', 'on', 'style', 'map', 'shading', 'flat', ...
                  'plotrad', 0.5, 'headrad', 0.5, 'intrad', 0.5};
 
     fig = figure('Position', [100 100 1500 480], 'Visible', 'off');
 
     subplot(1,3,1);
-    draw_topomap(P50_topo, topo_chanlocs, topo_args, clim_P50);
+    draw_topomap(P50_topo, topo_chanlocs, topo_args, shared_topo_clim);
     title(sprintf('P50  (%.0f ms)', peaks.P50_lat), 'FontSize', 12);
-    clim(clim_P50);
+    clim(shared_topo_clim);
     colorbar;
 
     subplot(1,3,2);
-    draw_topomap(N1_topo, topo_chanlocs, topo_args, clim_N1);
+    draw_topomap(N1_topo, topo_chanlocs, topo_args, shared_topo_clim);
     title(sprintf('N1  (%.0f ms)', peaks.N1_lat), 'FontSize', 12);
-    clim(clim_N1);
+    clim(shared_topo_clim);
     colorbar;
 
     subplot(1,3,3);
-    draw_topomap(P2_topo, topo_chanlocs, topo_args, clim_P2);
+    draw_topomap(P2_topo, topo_chanlocs, topo_args, shared_topo_clim);
     title(sprintf('P2  (%.0f ms)', peaks.P2_lat), 'FontSize', 12);
-    clim(clim_P2);
+    clim(shared_topo_clim);
     colorbar;
 
     sgtitle(sprintf('%s  |  %s', Sub, strrep(label,'_',' ')), 'FontSize', 13);
