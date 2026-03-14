@@ -180,7 +180,7 @@ for F = 1:length(cfg.FileInEEG)
     % --------------------------------------------------------------
     % filter data
     % --------------------------------------------------------------
-    % Client requirement: filter first, then downsample.
+    % Filter first, then downsample.
     [EEG] = ApplyFilters(EEG, cfg);
 
     % --------------------------------------------------------------

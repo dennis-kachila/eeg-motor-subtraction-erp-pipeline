@@ -4,7 +4,7 @@ function PrepareData_5_PostICAProcessing(Sub, cfg)
 % This function performs post-ICA processing:
 % 1. Additional epoch rejection based on amplitude thresholds (if data is epoched)
 % 2. Interpolation of bad channels that were removed earlier
-% 3. No post-ICA rereferencing (intentionally skipped per client requirement)
+% 3. No post-ICA rereferencing (intentionally skipped)
 %
 % This function is called per session by RunMyScripts.
 
@@ -178,14 +178,14 @@ else
 end
 
 % --------------------------------------------------------------
-% Final re-reference (disabled by client request)
+% Final re-reference (disabled by design)
 % --------------------------------------------------------------
 reference_mode = 'skipped_by_design';
 reference_channels_used = {};
 if isfield(cfg, 'runReref') && cfg.runReref == 1
-    fprintf('Post-ICA re-reference is configured but skipped by client request.\n');
+    fprintf('Post-ICA re-reference is configured but skipped.\n');
 else
-    fprintf('Post-ICA re-reference skipped by client request.\n');
+    fprintf('Post-ICA re-reference skipped.\n');
 end
 
 % --------------------------------------------------------------

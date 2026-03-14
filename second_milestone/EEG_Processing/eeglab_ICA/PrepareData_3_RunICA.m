@@ -82,7 +82,7 @@ for f = 1:length(all_files)
     % --------------------------------------------------------------
     % Determine which channels to use for ICA
     % --------------------------------------------------------------
-    % Client requirement: use all channels by default.
+    % Use all channels by default.
     ica_chans = cfg.ica_chans;
     if isempty(ica_chans)
         ica_chans = 1:EEG.nbchan;

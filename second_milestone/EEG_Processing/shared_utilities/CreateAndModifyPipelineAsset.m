@@ -185,7 +185,7 @@ cfg.PostICA.probability_threshold = 5;
 % Channel interpolation (keep off)
 cfg.PostICA.interpolate_channels = 0;
 
-% Post-ICA rereference is intentionally disabled (client requirement)
+% Post-ICA rereference is intentionally disabled
 cfg.PostICA.runReref              = 0;
 cfg.PostICA.Reference             = {'Mastoid Left', 'Mastoid Right'};
 
