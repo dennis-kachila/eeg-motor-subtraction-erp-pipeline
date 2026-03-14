@@ -82,6 +82,9 @@ end
 cfg.PATH.SourcePath = [BasePath filesep 'sourcedata' filesep];
 cfg.PATH.PreprocPath = [BasePath filesep 'derivatives' filesep];
 
+% Remove stale project-related path entries (common after folder moves).
+cleanup_stale_project_paths();
+
 % Create directories if they don't exist
 if ~exist(cfg.PATH.SourcePath, 'dir')
     fprintf('Warning: sourcedata folder not found. Creating it at:\n%s\n', cfg.PATH.SourcePath);
@@ -99,6 +102,20 @@ if ~exist(cfg.PATH.PipelineAsset, 'dir')
 end
 
 %% Check for EEGLAB
+
+% Add EEGLAB root path if needed (do not add all subfolders).
+eeglab_candidates = {
+    fullfile(BasePath, 'external', 'eeglab');
+    fullfile(BasePath, '..', 'external', 'eeglab')
+};
+if isempty(which('eeglab'))
+    for ec = 1:numel(eeglab_candidates)
+        if exist(eeglab_candidates{ec}, 'dir')
+            addpath(eeglab_candidates{ec});
+            break;
+        end
+    end
+end
 
 % Check if EEGLAB is already on the path
 if exist('eeglab.m', 'file')
@@ -149,4 +166,39 @@ if exist(biosig_path, 'dir')
 else
     warning('BIOSIG folder not found. Tried: %s. Some functions may not work.', ...
         fullfile(BasePath, 'external', 'biosig', 'biosig4matlab'));
+end
+
+end
+
+
+function cleanup_stale_project_paths()
+% Remove invalid path entries tied to this repository and EEGLAB .git internals.
+repo_tag = 'eeg-motor-subtraction-erp-pipeline';
+
+all_paths = strsplit(path, pathsep);
+for i = 1:numel(all_paths)
+    this_path = all_paths{i};
+    if isempty(this_path)
+        continue;
+    end
+
+    in_repo_scope = contains(this_path, repo_tag, 'IgnoreCase', true);
+    is_eeglab_git_path = contains(this_path, [filesep 'external' filesep 'eeglab' filesep '.git'], 'IgnoreCase', true);
+
+    remove_path = false;
+    if in_repo_scope && exist(this_path, 'dir') ~= 7
+        remove_path = true;
+    end
+    if is_eeglab_git_path
+        remove_path = true;
+    end
+
+    if remove_path
+        try
+            rmpath(this_path);
+        catch
+            % Continue cleanup even if one path cannot be removed.
+        end
+    end
+end
 end
