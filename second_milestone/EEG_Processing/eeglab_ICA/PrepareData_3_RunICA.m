@@ -110,18 +110,24 @@ for f = 1:length(all_files)
     % --------------------------------------------------------------
     % Determine number of components to extract
     % --------------------------------------------------------------
-    % Check rank of data (can be reduced if channels were interpolated)
-    data_rank = rank(double(EEG.data(:,:)'));
+    % Check rank on the selected ICA channels (not all channels).
+    % This prevents invalid PCA values when non-ICA channels exist.
+    selected_data_rank = rank(double(EEG.data(ica_chans, :)'));
+    max_ncomps_allowed = min(selected_data_rank, length(ica_chans));
+    if max_ncomps_allowed < 1
+        max_ncomps_allowed = length(ica_chans);
+    end
     
     ica_ncomps = cfg.ica_ncomps;
     if isempty(ica_ncomps)
-        ica_ncomps = data_rank;
-        fprintf('Data rank is %d. Extracting %d ICA components.\n', data_rank, ica_ncomps);
+        ica_ncomps = max_ncomps_allowed;
+        fprintf('Selected ICA-channel rank is %d across %d channels. Extracting %d ICA components.\n', ...
+            selected_data_rank, length(ica_chans), ica_ncomps);
     else
-        if ica_ncomps > data_rank
-            warning('Requested %d components but data rank is only %d. Using %d components.', ...
-                ica_ncomps, data_rank, data_rank);
-            ica_ncomps = data_rank;
+        if ica_ncomps > max_ncomps_allowed
+            warning('Requested %d components but max allowed is %d (rank %d, channels %d). Using %d.', ...
+                ica_ncomps, max_ncomps_allowed, selected_data_rank, length(ica_chans), max_ncomps_allowed);
+            ica_ncomps = max_ncomps_allowed;
         end
         fprintf('Extracting %d ICA components from %d channels.\n', ...
             ica_ncomps, length(ica_chans));
