@@ -313,6 +313,7 @@ end
 function plot_topo(EEG, peaks, Sub, label, fig_path)
     times   = EEG.times;
     n_scalp = min(64, EEG.nbchan);
+    topo_chanlocs = ensure_topo_chanlocs(EEG.chanlocs(1:n_scalp));
 
     get_topo = @(lat) mean(EEG.data(1:n_scalp, find(times >= lat, 1, 'first'), :), 3);
     P50_topo = get_topo(peaks.P50_lat);
@@ -332,19 +333,19 @@ function plot_topo(EEG, peaks, Sub, label, fig_path)
     fig = figure('Position', [100 100 1500 480], 'Visible', 'off');
 
     subplot(1,3,1);
-    topoplot(P50_topo, EEG.chanlocs(1:n_scalp), topo_args{:});
+    draw_topomap(P50_topo, topo_chanlocs, topo_args, clim_P50);
     title(sprintf('P50  (%.0f ms)', peaks.P50_lat), 'FontSize', 12);
     clim(clim_P50);
     colorbar;
 
     subplot(1,3,2);
-    topoplot(N1_topo, EEG.chanlocs(1:n_scalp), topo_args{:});
+    draw_topomap(N1_topo, topo_chanlocs, topo_args, clim_N1);
     title(sprintf('N1  (%.0f ms)', peaks.N1_lat), 'FontSize', 12);
     clim(clim_N1);
     colorbar;
 
     subplot(1,3,3);
-    topoplot(P2_topo, EEG.chanlocs(1:n_scalp), topo_args{:});
+    draw_topomap(P2_topo, topo_chanlocs, topo_args, clim_P2);
     title(sprintf('P2  (%.0f ms)', peaks.P2_lat), 'FontSize', 12);
     clim(clim_P2);
     colorbar;
@@ -353,6 +354,122 @@ function plot_topo(EEG, peaks, Sub, label, fig_path)
     saveas(fig, [fig_path Sub '_' label '_topography.png']);
     close(fig);
     fprintf('  Saved: %s_%s_topography.png\n', Sub, label);
+end
+
+function draw_topomap(topo_data, chanlocs, topo_args, clim_vals)
+    % Primary path: standard topoplot (same as first-milestone style).
+    try
+        topoplot(topo_data, chanlocs, topo_args{:});
+        return;
+    catch
+        % Fallback 1: minimal topoplot args for compatibility across EEGLAB builds.
+        try
+            topoplot(topo_data, chanlocs, 'electrodes', 'on', 'style', 'map');
+            return;
+        catch
+            % Fallback 2: scatter-map from available channel coordinates.
+            scatter_topomap_fallback(topo_data, chanlocs, clim_vals);
+        end
+    end
+end
+
+function scatter_topomap_fallback(topo_data, chanlocs, clim_vals)
+    x = nan(1, numel(chanlocs));
+    y = nan(1, numel(chanlocs));
+
+    for ii = 1:numel(chanlocs)
+        if isfield(chanlocs(ii), 'X') && ~isempty(chanlocs(ii).X) && ...
+           isfield(chanlocs(ii), 'Y') && ~isempty(chanlocs(ii).Y)
+            x(ii) = chanlocs(ii).X;
+            y(ii) = chanlocs(ii).Y;
+        elseif isfield(chanlocs(ii), 'theta') && ~isempty(chanlocs(ii).theta) && ...
+               isfield(chanlocs(ii), 'radius') && ~isempty(chanlocs(ii).radius)
+            th = deg2rad(chanlocs(ii).theta);
+            r  = chanlocs(ii).radius;
+            x(ii) = r * cos(th);
+            y(ii) = r * sin(th);
+        end
+    end
+
+    valid = isfinite(x) & isfinite(y) & isfinite(topo_data(:)');
+    if nnz(valid) < 5
+        axis off;
+        text(0.5, 0.5, 'Topography unavailable', 'HorizontalAlignment', 'center');
+        return;
+    end
+
+    scatter(x(valid), y(valid), 180, topo_data(valid), 'filled');
+    hold on;
+    th = linspace(0, 2*pi, 400);
+    plot(cos(th), sin(th), 'k-', 'LineWidth', 1.0);
+    hold off;
+    axis equal;
+    axis off;
+    caxis(clim_vals);
+    colormap('turbo');
+end
+
+function chanlocs_out = ensure_topo_chanlocs(chanlocs_in)
+    chanlocs_out = chanlocs_in;
+
+    % If most channels already have coordinates, keep them as-is.
+    if has_sufficient_topo_coords(chanlocs_out)
+        return;
+    end
+
+    lookup_file = which('Standard-10-5-Cap385_witheog.elp');
+    if isempty(lookup_file)
+        return;
+    end
+
+    try
+        std_locs = readlocs(lookup_file);
+    catch
+        return;
+    end
+
+    std_labels = strtrim({std_locs.labels});
+    for ii = 1:numel(chanlocs_out)
+        if ~isfield(chanlocs_out(ii), 'labels') || isempty(chanlocs_out(ii).labels)
+            continue;
+        end
+
+        lab = strtrim(chanlocs_out(ii).labels);
+        jj = find(strcmpi(std_labels, lab), 1, 'first');
+        if isempty(jj)
+            continue;
+        end
+
+        % Copy standard spherical/cartesian location fields used by topoplot.
+        copy_fields = {'theta','radius','X','Y','Z','sph_theta','sph_phi','sph_radius'};
+        for ff = 1:numel(copy_fields)
+            fld = copy_fields{ff};
+            if isfield(std_locs(jj), fld)
+                chanlocs_out(ii).(fld) = std_locs(jj).(fld);
+            end
+        end
+    end
+end
+
+function tf = has_sufficient_topo_coords(chanlocs)
+    n = numel(chanlocs);
+    if n == 0
+        tf = false;
+        return;
+    end
+
+    valid = 0;
+    for ii = 1:n
+        has_xy = isfield(chanlocs(ii), 'X') && ~isempty(chanlocs(ii).X) && ...
+                 isfield(chanlocs(ii), 'Y') && ~isempty(chanlocs(ii).Y);
+        has_tr = isfield(chanlocs(ii), 'theta') && ~isempty(chanlocs(ii).theta) && ...
+                 isfield(chanlocs(ii), 'radius') && ~isempty(chanlocs(ii).radius);
+        if has_xy || has_tr
+            valid = valid + 1;
+        end
+    end
+
+    tf = valid >= max(5, ceil(0.5 * n));
 end
 %% =========================================================
 %% save_subject_excel  - saves per-subject ERP results to Excel

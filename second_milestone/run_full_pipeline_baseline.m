@@ -40,12 +40,13 @@ for step = 1:5
         'Pipeline', pipeline, 'Sessions', {});
 end
 
+fprintf('\n================ STEP 6 ================\n');
+RunMyScripts('Subs', subjects, 'Script', 'PrepareData', ...
+    'Function', 'PrepareData_6_ExtractConditions', ...
+    'Pipeline', pipeline, 'Sessions', {});
+
 for subjectIndex = 1:numel(subjects)
     subjectId = subjects{subjectIndex};
-
-    fprintf('\n================ STEP 6 ================\n');
-    PrepareData_6_ExtractConditions(subjectId, cfg);
-
     fprintf('\n================ STEP 7 ================\n');
     PrepareData_7_ComputeERPs(subjectId, cfg);
 end
