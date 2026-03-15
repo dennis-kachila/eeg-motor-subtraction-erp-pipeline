@@ -1,5 +1,11 @@
 function results = compute_N1_P2(EEG_adapt, EEG_main, tone_type)
 % Compute P50, N1 and P2 ERP components for adaptation and main blocks
+% Peak-identification rule:
+%   - P50/P2: absolute maximum within the configured window
+%   - N1:     absolute minimum within the configured window
+% Sub-sample latency refinement is then applied with a local quadratic fit.
+% This follows standard ERP practice (window-constrained absolute extrema)
+% while reducing sample-quantization effects in reported latencies.
 %
 % Inputs:
 %   EEG_adapt  - EEGLAB structure for adaptation block
@@ -30,10 +36,12 @@ elec_groups.Central = {'Cz','C1','C2','C3','CPz'};
 % FC1, FC2, FC3, FC4, Fz, F1, F2, Cz, C1, C2, C3, CPz, FCz
 all_elecs = {'FCz','FC1','FC2','FC3','FC4','Fz','F1','F2','Cz','C1','C2','C3','CPz'};
 
-% CHANGE 1: Extended time windows to cover P50 and wider N1/P2
+% Component windows (ms). N1 starts at 70 ms to avoid clipping early minima.
 P50_window = [30  80];
-N1_window  = [80  150];
-P2_window  = [150 275];
+N1_window  = [70  150];
+% P2 starts at 140 ms (buffer before the 150 ms expected onset so early peaks
+% are not clipped to the window boundary) and ends at 250 ms per literature.
+P2_window  = [140 250];
 
 %% Adaptation block
 fprintf('Processing adaptation block for %s...\n', tone_type);
@@ -150,39 +158,93 @@ function [peak_amp, peak_lat] = robust_peak_latency(seg, seg_times, polarity)
         return;
     end
 
-    smooth_seg = movmean(seg, min(5, numel(seg)));
+    % Primary rule: use the absolute extremum in the RAW segment within the
+    % configured component window. This aligns with standard ERP practice
+    % and avoids edge artifacts introduced by smoothing.
     if polarity > 0
-        target_val = max(smooth_seg);
+        target_val = max(seg);
     else
-        target_val = min(smooth_seg);
+        target_val = min(seg);
     end
 
-    tol = max(1e-9, 1e-6 * max(1, range(smooth_seg)));
-    cand = find(abs(smooth_seg - target_val) <= tol);
+    tol = max(1e-9, 1e-6 * max(1, range(seg)));
+    cand = find(abs(seg - target_val) <= tol);
     if isempty(cand)
-        [~, idx] = min(abs(smooth_seg - target_val));
+        [~, idx] = min(abs(seg - target_val));
+    elseif numel(cand) == 1
+        idx = cand;
     else
-        idx = round(mean(cand));
+        % Tie-breaker only: use local smooth trend, then center index.
+        smooth_seg = movmean(seg, min(5, numel(seg)));
+        if polarity > 0
+            tie_val = max(smooth_seg(cand));
+        else
+            tie_val = min(smooth_seg(cand));
+        end
+        tie_tol = max(1e-9, 1e-6 * max(1, range(smooth_seg(cand))));
+        tie_cand = cand(abs(smooth_seg(cand) - tie_val) <= tie_tol);
+        idx = round(mean(tie_cand));
     end
 
     peak_amp = seg(idx);
     peak_lat = seg_times(idx);
 
-    % Quadratic interpolation around the extremum for sub-sample latency.
-    if idx > 1 && idx < numel(seg)
-        y1 = seg(idx - 1);
-        y2 = seg(idx);
-        y3 = seg(idx + 1);
-        denom = (y1 - 2*y2 + y3);
-        if abs(denom) > 1e-12
-            delta = 0.5 * (y1 - y3) / denom;
-            if abs(delta) <= 1
-                dt = seg_times(2) - seg_times(1);
-                peak_lat = peak_lat + delta * dt;
-                peak_amp = y2 - 0.25 * (y1 - y3) * delta;
-            end
+    % Sub-sample refinement with a quadratic fit, including boundary cases.
+    n = numel(seg);
+    if n >= 3
+        if idx == 1
+            x = seg_times(1:3);
+            y = seg(1:3);
+            x_bounds = [x(1), x(2)];
+        elseif idx == n
+            x = seg_times(n-2:n);
+            y = seg(n-2:n);
+            x_bounds = [x(2), x(3)];
+        else
+            x = seg_times(idx-1:idx+1);
+            y = seg(idx-1:idx+1);
+            x_bounds = [x(1), x(3)];
+        end
+
+        [ok, lat_refined, amp_refined] = quadratic_vertex_refine(x, y, polarity, x_bounds);
+        if ok
+            peak_lat = lat_refined;
+            peak_amp = amp_refined;
         end
     end
+end
+
+function [ok, x_vertex, y_vertex] = quadratic_vertex_refine(x, y, polarity, x_bounds)
+    ok = false;
+    x_vertex = NaN;
+    y_vertex = NaN;
+
+    p = polyfit(x, y, 2);
+    a = p(1); b = p(2);
+    if abs(a) < 1e-12
+        return;
+    end
+
+    if polarity > 0
+        if a >= 0
+            return;
+        end
+    else
+        if a <= 0
+            return;
+        end
+    end
+
+    xv = -b / (2 * a);
+    lo = min(x_bounds);
+    hi = max(x_bounds);
+    if xv < lo || xv > hi
+        return;
+    end
+
+    x_vertex = xv;
+    y_vertex = polyval(p, xv);
+    ok = true;
 end
 
 
